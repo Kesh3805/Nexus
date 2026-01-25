@@ -1,0 +1,422 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER SYSTEM ====================
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  username      String   @unique
+  password      String
+  displayName   String?
+  avatarStyle   String   @default("adventurer") // DiceBear style
+  avatarSeed    String   @default(cuid()) // Random seed for avatar
+  bio           String?  @db.Text
+  
+  // Gamification
+  level         Int      @default(1)
+  xp            Int      @default(0)
+  totalXp       Int      @default(0)
+  streak        Int      @default(0)
+  longestStreak Int      @default(0)
+  lastActiveAt  DateTime @default(now())
+  
+  // Currency
+  gems          Int      @default(100)
+  coins         Int      @default(500)
+  
+  // Stats
+  totalQuizzes  Int      @default(0)
+  totalCorrect  Int      @default(0)
+  totalAnswered Int      @default(0)
+  perfectQuizzes Int     @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  quizAttempts    QuizAttempt[]
+  achievements    UserAchievement[]
+  sentRequests    FriendRequest[]   @relation("SentRequests")
+  receivedRequests FriendRequest[]  @relation("ReceivedRequests")
+  friendsAsUser1  Friendship[]      @relation("User1Friends")
+  friendsAsUser2  Friendship[]      @relation("User2Friends")
+  dailyProgress   DailyProgress[]
+  notifications   Notification[]
+  ownedItems      UserItem[]
+
+  @@index([level])
+  @@index([totalXp])
+  @@index([streak])
+}
+
+// ==================== QUIZ SYSTEM ====================
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  icon        String   // Emoji or icon name
+  color       String   // Hex color for category theme
+  order       Int      @default(0)
+  isLocked    Boolean  @default(false)
+  unlockLevel Int      @default(1)
+  
+  quizzes     Quiz[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Quiz {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  
+  difficulty  Difficulty @default(MEDIUM)
+  timeLimit   Int        @default(30) // seconds per question
+  xpReward    Int        @default(50)
+  coinReward  Int        @default(10)
+  
+  // Progression
+  order       Int        @default(0)
+  isLocked    Boolean    @default(false)
+  requiredXp  Int        @default(0)
+  
+  // Stats
+  timesPlayed Int        @default(0)
+  avgScore    Float      @default(0)
+  
+  questions   Question[]
+  attempts    QuizAttempt[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([difficulty])
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+  EXPERT
+  NIGHTMARE
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  
+  text        String   @db.Text
+  type        QuestionType @default(MULTIPLE_CHOICE)
+  
+  // For multiple choice
+  options     Json     // Array of {id, text, isCorrect}
+  
+  // Explanation shown after answering
+  explanation String?  @db.Text
+  
+  // Media
+  imageUrl    String?
+  
+  order       Int      @default(0)
+  points      Int      @default(10)
+  
+  answers     Answer[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([quizId])
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  MULTI_SELECT
+}
+
+// ==================== QUIZ ATTEMPTS & ANSWERS ====================
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  
+  score       Int      @default(0)
+  maxScore    Int      @default(0)
+  percentage  Float    @default(0)
+  
+  correctCount    Int  @default(0)
+  incorrectCount  Int  @default(0)
+  skippedCount    Int  @default(0)
+  
+  timeSpent   Int      @default(0) // Total seconds
+  isPerfect   Boolean  @default(false)
+  
+  xpEarned    Int      @default(0)
+  coinsEarned Int      @default(0)
+  bonusXp     Int      @default(0) // Streak bonus, speed bonus, etc.
+  
+  completedAt DateTime?
+  startedAt   DateTime @default(now())
+  
+  answers     Answer[]
+  
+  @@index([userId])
+  @@index([quizId])
+  @@index([completedAt])
+}
+
+model Answer {
+  id          String   @id @default(cuid())
+  attemptId   String
+  attempt     QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  selectedOptions Json  // Array of selected option IDs
+  isCorrect   Boolean  @default(false)
+  timeSpent   Int      @default(0) // Seconds for this question
+  
+  answeredAt  DateTime @default(now())
+
+  @@index([attemptId])
+  @@index([questionId])
+}
+
+// ==================== ACHIEVEMENTS ====================
+
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  icon        String   // Emoji or icon
+  
+  category    AchievementCategory @default(GENERAL)
+  rarity      Rarity   @default(COMMON)
+  
+  // Requirements (stored as JSON for flexibility)
+  requirement Json     // { type: 'streak', value: 7 } or { type: 'quizzes_completed', value: 10 }
+  
+  xpReward    Int      @default(50)
+  gemReward   Int      @default(0)
+  
+  isSecret    Boolean  @default(false)
+  
+  users       UserAchievement[]
+  
+  createdAt   DateTime @default(now())
+}
+
+enum AchievementCategory {
+  GENERAL
+  STREAK
+  ACCURACY
+  SPEED
+  SOCIAL
+  COLLECTION
+  MASTERY
+  SPECIAL
+}
+
+enum Rarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+  MYTHIC
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  
+  unlockedAt    DateTime @default(now())
+  
+  @@unique([userId, achievementId])
+  @@index([userId])
+}
+
+// ==================== SOCIAL SYSTEM ====================
+
+model FriendRequest {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId  String
+  receiver    User     @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  status      RequestStatus @default(PENDING)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId])
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  user1Id   String
+  user1     User     @relation("User1Friends", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id   String
+  user2     User     @relation("User2Friends", fields: [user2Id], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?    // Additional data
+  
+  isRead    Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+enum NotificationType {
+  ACHIEVEMENT
+  FRIEND_REQUEST
+  LEVEL_UP
+  STREAK
+  CHALLENGE
+  SYSTEM
+}
+
+// ==================== DAILY TRACKING ====================
+
+model DailyProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date
+  
+  quizzesCompleted Int @default(0)
+  questionsAnswered Int @default(0)
+  correctAnswers   Int @default(0)
+  xpEarned        Int @default(0)
+  timeSpent       Int @default(0) // Minutes
+  
+  streakMaintained Boolean @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+}
+
+// ==================== SHOP & ITEMS ====================
+
+model ShopItem {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  type        ItemType
+  
+  // Price
+  coinPrice   Int?
+  gemPrice    Int?
+  
+  // For avatar items
+  avatarStyle String?
+  
+  // For power-ups
+  effectData  Json?
+  
+  isLimited   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  
+  owners      UserItem[]
+  
+  createdAt   DateTime @default(now())
+}
+
+enum ItemType {
+  AVATAR_STYLE
+  AVATAR_FRAME
+  TITLE
+  POWER_UP
+  XP_BOOST
+  STREAK_FREEZE
+}
+
+model UserItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      ShopItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  quantity  Int      @default(1)
+  isEquipped Boolean @default(false)
+  
+  purchasedAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+  @@index([userId])
+}
+
+// ==================== LEADERBOARD SNAPSHOTS ====================
+
+model LeaderboardSnapshot {
+  id          String   @id @default(cuid())
+  period      LeaderboardPeriod
+  startDate   DateTime
+  endDate     DateTime
+  
+  rankings    Json     // Array of { userId, rank, xp, username, avatarUrl }
+  
+  createdAt   DateTime @default(now())
+
+  @@index([period])
+  @@index([startDate])
+}
+
+enum LeaderboardPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  ALL_TIME
+}

@@ -1,0 +1,166 @@
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import jwt from 'jsonwebtoken';
+
+function getUserIdFromRequest(request: Request): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+    return decoded.userId;
+  } catch {
+    return null;
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get('period') || 'weekly';
+
+    // Get date range based on period
+    const now = new Date();
+    let startDate = new Date();
+
+    switch (period) {
+      case 'daily':
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'weekly':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'monthly':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'all':
+        startDate = new Date(0);
+        break;
+    }
+
+    // Get top users by XP earned in period
+    const leaderboard = await prisma.dailyProgress.groupBy({
+      by: ['userId'],
+      _sum: {
+        xpEarned: true,
+        quizzesCompleted: true,
+        correctAnswers: true,
+      },
+      where: {
+        date: {
+          gte: startDate,
+        },
+      },
+      orderBy: {
+        _sum: {
+          xpEarned: 'desc',
+        },
+      },
+      take: 50,
+    });
+
+    // Get user details
+    const userIds = leaderboard.map((l) => l.userId);
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarStyle: true,
+        avatarSeed: true,
+        level: true,
+        streak: true,
+      },
+    });
+
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const rankings = leaderboard.map((entry, index) => {
+      const user = userMap.get(entry.userId);
+      return {
+        rank: index + 1,
+        userId: entry.userId,
+        username: user?.username || 'Unknown',
+        displayName: user?.displayName,
+        avatarStyle: user?.avatarStyle || 'adventurer',
+        avatarSeed: user?.avatarSeed || entry.userId,
+        level: user?.level || 1,
+        streak: user?.streak || 0,
+        xpEarned: entry._sum.xpEarned || 0,
+        quizzesCompleted: entry._sum.quizzesCompleted || 0,
+        correctAnswers: entry._sum.correctAnswers || 0,
+      };
+    });
+
+    // Get current user's rank if authenticated
+    const userId = getUserIdFromRequest(request);
+    let currentUserRank = null;
+
+    if (userId) {
+      const userIndex = rankings.findIndex((r) => r.userId === userId);
+      if (userIndex !== -1) {
+        currentUserRank = rankings[userIndex];
+      } else {
+        // User not in top 50, calculate their rank
+        const userProgress = await prisma.dailyProgress.aggregate({
+          _sum: {
+            xpEarned: true,
+          },
+          where: {
+            userId,
+            date: { gte: startDate },
+          },
+        });
+
+        if (userProgress._sum.xpEarned) {
+          const higherCount = await prisma.dailyProgress.groupBy({
+            by: ['userId'],
+            _sum: { xpEarned: true },
+            where: { date: { gte: startDate } },
+            having: {
+              xpEarned: { _sum: { gt: userProgress._sum.xpEarned } },
+            },
+          });
+
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+              username: true,
+              displayName: true,
+              avatarStyle: true,
+              avatarSeed: true,
+              level: true,
+              streak: true,
+            },
+          });
+
+          currentUserRank = {
+            rank: higherCount.length + 1,
+            userId,
+            username: user?.username || 'Unknown',
+            displayName: user?.displayName,
+            avatarStyle: user?.avatarStyle || 'adventurer',
+            avatarSeed: user?.avatarSeed || userId,
+            level: user?.level || 1,
+            streak: user?.streak || 0,
+            xpEarned: userProgress._sum.xpEarned,
+          };
+        }
+      }
+    }
+
+    return NextResponse.json({
+      rankings,
+      currentUserRank,
+      period,
+    });
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

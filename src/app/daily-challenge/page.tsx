@@ -8,7 +8,7 @@ import {
   Swords, Shield, Heart, Gem, Coins, Lock, Play, CheckCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/layout/Sidebar';
+import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { useAuthStore } from '@/lib/store';
 import {
   ParticleField, GlowingOrb, AnimatedBorder, SpotlightCard,
@@ -172,8 +172,7 @@ const PowerUpCard = ({
 
 export default function DailyChallengePage() {
   const router = useRouter();
-  const { user } = useAuthStore();
-  const [challenge, setChallenge] = useState<DailyChallenge | null>(null);
+  const { user } = useAuthStore();  const sidebarMargin = useSidebarMargin();  const [challenge, setChallenge] = useState<DailyChallenge | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [hasCompleted, setHasCompleted] = useState(false);
   const [todayScore, setTodayScore] = useState<number | null>(null);
@@ -199,8 +198,8 @@ export default function DailyChallengePage() {
         setTimeRemaining(data.timeRemaining);
         setParticipantCount(data.participantCount);
       }
-    } catch (error) {
-      console.error('Failed to fetch daily challenge:', error);
+    } catch {
+      // Challenge will remain unloaded
     } finally {
       setLoading(false);
     }
@@ -229,7 +228,7 @@ export default function DailyChallengePage() {
     <div className="min-h-screen bg-gray-950 text-white flex">
       <Sidebar />
       
-      <main className="flex-1 ml-20 relative overflow-hidden">
+      <main className={`flex-1 relative overflow-hidden transition-all duration-300 ${sidebarMargin}`}>
         {/* Background effects */}
         <div className="fixed inset-0 pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-gray-950 to-cyan-900/20" />

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { Card, Badge, ProgressBar } from '@/components/ui/Elements';
 import { cn } from '@/lib/utils';
 import { 
@@ -55,6 +55,7 @@ interface AnalyticsData {
 export default function AnalyticsPage() {
   const router = useRouter();
   const { token, user } = useAuthStore();
+  const sidebarMargin = useSidebarMargin();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [period, setPeriod] = useState('7');
   const [isLoading, setIsLoading] = useState(true);
@@ -75,8 +76,8 @@ export default function AnalyticsPage() {
           const data = await res.json();
           setAnalytics(data);
         }
-      } catch (error) {
-        console.error('Failed to fetch analytics');
+      } catch {
+        // Analytics will remain empty
       } finally {
         setIsLoading(false);
       }
@@ -91,7 +92,7 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-dark-950">
       <Sidebar />
       
-      <main className="lg:ml-64 min-h-screen">
+      <main className={`min-h-screen transition-all duration-300 ${sidebarMargin}`}>
         <div className="p-4 lg:p-8 max-w-6xl mx-auto">
           {/* Header */}
           <motion.div

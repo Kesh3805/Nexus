@@ -1,25 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-
-function getUserIdFromRequest(request: Request): string | null {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-
-  try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
-    return decoded.userId;
-  } catch {
-    return null;
-  }
-}
+import { getUserIdFromRequest } from '@/lib/auth';
+import { handleApiError, apiErrors } from '@/lib/api-errors';
 
 export async function GET(request: Request) {
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiErrors.unauthorized();
     }
 
     const { searchParams } = new URL(request.url);
@@ -124,10 +112,6 @@ export async function GET(request: Request) {
       worstCategory: categoryArray[categoryArray.length - 1] || null,
     });
   } catch (error) {
-    console.error('Analytics error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

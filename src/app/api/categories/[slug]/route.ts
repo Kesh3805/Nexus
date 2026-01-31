@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { handleApiError, apiErrors } from '@/lib/api-errors';
 
 export async function GET(
   request: Request,
@@ -21,18 +22,11 @@ export async function GET(
     });
 
     if (!category) {
-      return NextResponse.json(
-        { error: 'Category not found' },
-        { status: 404 }
-      );
+      throw apiErrors.notFound('Category');
     }
 
     return NextResponse.json(category);
   } catch (error) {
-    console.error('Category error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

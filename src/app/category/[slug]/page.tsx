@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { Card, Badge, Button, ProgressBar } from '@/components/ui/Elements';
 import { cn, difficultyColors } from '@/lib/utils';
 import { 
@@ -39,6 +39,7 @@ interface Category {
 export default function CategoryPage({ params }: { params: { slug: string } }) {
   const router = useRouter();
   const { token, user } = useAuthStore();
+  const sidebarMargin = useSidebarMargin();
   const [category, setCategory] = useState<Category | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -79,7 +80,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
     <div className="min-h-screen bg-dark-950">
       <Sidebar />
       
-      <main className="lg:ml-64 min-h-screen">
+      <main className={`min-h-screen transition-all duration-300 ${sidebarMargin}`}>
         <div className="p-4 lg:p-8 max-w-4xl mx-auto">
           {/* Header */}
           <motion.div

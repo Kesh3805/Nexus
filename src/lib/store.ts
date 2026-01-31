@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 interface User {
   id: string;
@@ -24,30 +24,45 @@ interface User {
 interface AuthState {
   user: User | null;
   token: string | null;
-  isLoading: boolean;
+  isHydrated: boolean;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   updateUser: (updates: Partial<User>) => void;
   logout: () => void;
+  setHydrated: (hydrated: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
-      isLoading: true,
-      setUser: (user) => set({ user, isLoading: false }),
-      setToken: (token) => set({ token }),
+      isHydrated: false,
+      setUser: (user) => set({ user }),
+      setToken: (token) => {
+        set({ token });
+      },
       updateUser: (updates) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...updates } : null,
         })),
-      logout: () => set({ user: null, token: null }),
+      logout: () => {
+        set({ user: null, token: null });
+      },
+      setHydrated: (hydrated) => set({ isHydrated: hydrated }),
     }),
     {
       name: 'nexus-auth',
-      partialize: (state) => ({ token: state.token }),
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ 
+        token: state.token,
+        user: state.user 
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.setHydrated(true);
+        }
+      },
     }
   )
 );

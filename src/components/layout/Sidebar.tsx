@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { cn, getAvatarUrl, getXpForLevel } from '@/lib/utils';
-import { useAuthStore } from '@/lib/store';
+import { useAuthStore, useUIStore } from '@/lib/store';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -22,12 +22,14 @@ import {
   Swords,
   ShoppingBag,
   Calendar,
-  User
+  User,
+  Briefcase
 } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
   { icon: Home, label: 'Dashboard', href: '/dashboard' },
+  { icon: Briefcase, label: 'Campaign Simulator', href: '/simulator', badge: 'NEW' },
   { icon: Calendar, label: 'Daily Challenge', href: '/daily-challenge', badge: '2x XP' },
   { icon: Swords, label: 'Battle Mode', href: '/battle', badge: 'LIVE' },
   { icon: Trophy, label: 'Leaderboard', href: '/leaderboard' },
@@ -38,11 +40,18 @@ const navItems = [
   { icon: User, label: 'Profile', href: '/profile' },
 ];
 
+// Hook to get main content margin class based on sidebar state
+export function useSidebarMargin() {
+  const { isSidebarOpen } = useUIStore();
+  return isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20';
+}
+
 export function Sidebar() {
   const { user, logout } = useAuthStore();
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isSidebarOpen, toggleSidebar } = useUIStore();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const isCollapsed = !isSidebarOpen;
 
   if (!user) return null;
 
@@ -183,6 +192,7 @@ export function Sidebar() {
       <button
         onClick={() => setIsMobileOpen(true)}
         className="fixed top-4 left-4 z-50 p-2 glass rounded-lg lg:hidden"
+        aria-label="Open navigation menu"
       >
         <Menu className="w-6 h-6 text-neon-cyan" />
       </button>
@@ -208,6 +218,7 @@ export function Sidebar() {
         <button
           onClick={() => setIsMobileOpen(false)}
           className="absolute top-4 right-4 p-2"
+          aria-label="Close navigation menu"
         >
           <X className="w-5 h-5 text-gray-400" />
         </button>
@@ -221,8 +232,9 @@ export function Sidebar() {
         className="hidden lg:flex fixed left-0 top-0 bottom-0 glass-dark flex-col z-40"
       >
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={toggleSidebar}
           className="absolute -right-3 top-8 p-1.5 bg-dark-700 rounded-full border border-white/10 hover:border-neon-cyan/50 transition-colors"
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           <Zap className="w-3 h-3 text-neon-cyan" />
         </button>

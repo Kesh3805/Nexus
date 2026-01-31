@@ -513,3 +513,113 @@ body {
     transform: scale(1.5);
   }
 }
+
+/* Focus Visible - Enhanced Accessibility */
+:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* GPU Acceleration Hints */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Text Selection */
+::selection {
+  background: rgba(0, 245, 255, 0.3);
+  color: white;
+}
+
+/* Focus States for Forms */
+input:focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 0 0 2px rgba(0, 245, 255, 0.2);
+}
+
+/* Button Active States */
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Image Optimization */
+img {
+  max-width: 100%;
+  height: auto;
+  content-visibility: auto;
+}
+
+/* Smooth Page Transitions */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+/* Skeleton Loading Animation */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .glass,
+  .glass-dark,
+  .glass-card {
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid white;
+  }
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .glass,
+  .glass-dark,
+  .glass-card,
+  .cyber-bg {
+    background: white !important;
+    border: 1px solid #ccc !important;
+  }
+  
+  .neon-text {
+    text-shadow: none !important;
+    color: black !important;
+  }
+}

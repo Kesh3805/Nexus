@@ -1,18 +1,49 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { signToken } from '@/lib/auth';
+import { z } from 'zod';
+import { handleApiError, apiErrors } from '@/lib/api-errors';
+import { checkRateLimit, getIdentifier, getRateLimitHeaders, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(1, 'Password is required'),
+});
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
-
-    if (!email || !password) {
+    // Rate limit check for auth endpoints
+    const identifier = getIdentifier(request);
+    const rateLimitResult = checkRateLimit(identifier, RATE_LIMIT_CONFIGS.auth);
+    
+    if (!rateLimitResult.success) {
+      const retryAfter = Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000);
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: `Too many login attempts. Please try again in ${retryAfter} seconds.` },
+        { 
+          status: 429,
+          headers: {
+            ...getRateLimitHeaders(rateLimitResult),
+            'Retry-After': retryAfter.toString(),
+          },
+        }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    
+    // Validate input with Zod
+    const result = loginSchema.safeParse(body);
+    if (!result.success) {
+      const firstError = result.error.issues?.[0]?.message || 'Invalid input';
+      return NextResponse.json(
+        { error: firstError },
         { status: 400 }
       );
     }
+    
+    const { email, password } = result.data;
 
     // Find user
     const user = await prisma.user.findUnique({
@@ -20,20 +51,14 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
+      throw apiErrors.invalidCredentials();
     }
 
     // Verify password
     const isValid = await bcrypt.compare(password, user.password);
 
     if (!isValid) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
+      throw apiErrors.invalidCredentials();
     }
 
     // Check streak
@@ -78,19 +103,11 @@ export async function POST(request: Request) {
       },
     });
 
-    // Generate JWT
-    const token = jwt.sign(
-      { userId: updatedUser.id },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: '7d' }
-    );
+    // Generate JWT using centralized auth
+    const token = signToken(updatedUser.id);
 
     return NextResponse.json({ user: updatedUser, token });
   } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

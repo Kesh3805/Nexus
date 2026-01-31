@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { Card, Badge, ProgressBar } from '@/components/ui/Elements';
 import { cn, rarityColors } from '@/lib/utils';
 import { Award, Lock, Star, Sparkles, Trophy, Flame, Zap, Target } from 'lucide-react';
@@ -25,8 +25,7 @@ interface Achievement {
 
 export default function AchievementsPage() {
   const router = useRouter();
-  const { token } = useAuthStore();
-  const [achievements, setAchievements] = useState<{
+  const { token } = useAuthStore();  const sidebarMargin = useSidebarMargin();  const [achievements, setAchievements] = useState<{
     unlocked: Achievement[];
     locked: Achievement[];
     secret: number;
@@ -60,8 +59,8 @@ export default function AchievementsPage() {
           const data = await res.json();
           setAchievements(data);
         }
-      } catch (error) {
-        console.error('Failed to fetch achievements');
+      } catch {
+        // Achievements will remain empty
       } finally {
         setIsLoading(false);
       }
@@ -94,7 +93,7 @@ export default function AchievementsPage() {
     <div className="min-h-screen bg-dark-950">
       <Sidebar />
       
-      <main className="lg:ml-64 min-h-screen">
+      <main className={`min-h-screen transition-all duration-300 ${sidebarMargin}`}>
         <div className="p-4 lg:p-8 max-w-5xl mx-auto">
           {/* Header */}
           <motion.div

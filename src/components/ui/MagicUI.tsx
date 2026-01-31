@@ -137,7 +137,7 @@ export function GlowingOrb({
   size = 400,
   color = '#00f5ff',
   className = '',
-  blur = 100,
+  blur = 50, // Reduced from 100 for performance
 }: {
   size?: number;
   color?: string;
@@ -159,7 +159,7 @@ export function GlowingOrb({
 
 // ==================== PARTICLE FIELD ====================
 export function ParticleField({
-  particleCount = 50,
+  particleCount = 15, // Reduced from 50 for performance
   className = '',
 }: {
   particleCount?: number;
@@ -212,7 +212,7 @@ export function AuroraBackground({ className = '' }: { className?: string }) {
         className="absolute -top-1/2 -left-1/2 w-full h-full"
         style={{
           background: 'conic-gradient(from 0deg, transparent, #00f5ff20, transparent, #a855f720, transparent)',
-          filter: 'blur(100px)',
+          filter: 'blur(60px)', // Reduced from 100 for performance
         }}
         animate={{ rotate: 360 }}
         transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
@@ -221,7 +221,7 @@ export function AuroraBackground({ className = '' }: { className?: string }) {
         className="absolute -bottom-1/2 -right-1/2 w-full h-full"
         style={{
           background: 'conic-gradient(from 180deg, transparent, #ff00ff20, transparent, #00f5ff20, transparent)',
-          filter: 'blur(100px)',
+          filter: 'blur(60px)', // Reduced from 100 for performance
         }}
         animate={{ rotate: -360 }}
         transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
@@ -494,7 +494,7 @@ export function MorphingText({
 
 // ==================== METEOR SHOWER ====================
 export function MeteorShower({
-  count = 20,
+  count = 10, // Reduced from 20 for performance
   className = '',
 }: {
   count?: number;
@@ -729,14 +729,17 @@ export function BentoCard({
   rowSpan?: number;
 }) {
   return (
-    <SpotlightCard
-      className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gray-900/50 backdrop-blur-xl p-6 transition-all duration-300 hover:border-cyan-500/50 ${className}`}
+    <div
       style={{
         gridColumn: `span ${colSpan}`,
         gridRow: `span ${rowSpan}`,
-      } as React.CSSProperties}
+      }}
     >
-      {children}
-    </SpotlightCard>
+      <SpotlightCard
+        className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gray-900/50 backdrop-blur-xl p-6 transition-all duration-300 hover:border-cyan-500/50 h-full ${className}`}
+      >
+        {children}
+      </SpotlightCard>
+    </div>
   );
 }

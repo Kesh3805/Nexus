@@ -58,9 +58,11 @@ export default function QuizPage({ params }: { params: { id: string } }) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnswerLocked, setIsAnswerLocked] = useState(false); // Prevent double-submit
   const [gameState, setGameState] = useState<'playing' | 'reviewing' | 'completed'>('playing');
   const [results, setResults] = useState<any>(null);
   const [startTime] = useState(Date.now());
+  const [submitError, setSubmitError] = useState<string | null>(null); // Error state
   
   // Modal states
   const [showLevelUp, setShowLevelUp] = useState(false);
@@ -99,6 +101,19 @@ export default function QuizPage({ params }: { params: { id: string } }) {
     };
   }, [token, params.id, router, setQuiz, startTimer, reset]);
 
+  const currentQuestion = quiz?.questions[currentQuestionIndex];
+  const isLastQuestion = currentQuestionIndex === (quiz?.questions.length || 0) - 1;
+
+  // Reset local states when quiz or question changes
+  useEffect(() => {
+    if (quiz && currentQuestion) {
+      setSelectedOption(null);
+      setShowResult(false);
+      setIsAnswerLocked(false);
+      setEncouragement('');
+    }
+  }, [currentQuestion?.id, quiz?.id]);
+
   // Timer
   useEffect(() => {
     if (gameState !== 'playing' || !quiz) return;
@@ -110,19 +125,18 @@ export default function QuizPage({ params }: { params: { id: string } }) {
     return () => clearInterval(timer);
   }, [gameState, quiz, tick]);
 
-  // Auto-submit on timer end
+  // Auto-submit on timer end - with proper guards
   useEffect(() => {
-    if (timeRemaining === 0 && gameState === 'playing' && !showResult) {
+    if (timeRemaining === 0 && gameState === 'playing' && !showResult && !isAnswerLocked && !isSubmitting) {
       handleOptionSelect(null);
     }
-  }, [timeRemaining, gameState, showResult]);
-
-  const currentQuestion = quiz?.questions[currentQuestionIndex];
-  const isLastQuestion = currentQuestionIndex === (quiz?.questions.length || 0) - 1;
+  }, [timeRemaining, gameState, showResult, isAnswerLocked, isSubmitting]);
 
   const handleOptionSelect = useCallback((optionId: string | null) => {
-    if (showResult) return;
+    // Prevent double-submission
+    if (showResult || isAnswerLocked) return;
     
+    setIsAnswerLocked(true);
     setSelectedOption(optionId);
     setShowResult(true);
 
@@ -142,24 +156,14 @@ export default function QuizPage({ params }: { params: { id: string } }) {
       setEncouragement(getRandomEncouragement('incorrect'));
     }
 
-    // Auto-advance after delay
-    setTimeout(() => {
-      if (isLastQuestion) {
-        handleSubmitQuiz();
-      } else {
-        nextQuestion();
-        setSelectedOption(null);
-        setShowResult(false);
-        setEncouragement('');
-        startTimer(quiz?.timeLimit || 30);
-      }
-    }, 2000);
-  }, [showResult, currentQuestion, isLastQuestion, setAnswer, nextQuestion, startTimer, quiz]);
+    // NO auto-advance - user controls the flow with Next button
+  }, [showResult, isAnswerLocked, currentQuestion, setAnswer]);
 
   const handleSubmitQuiz = async () => {
     if (isSubmitting || !quiz) return;
     setIsSubmitting(true);
     setGameState('completed');
+    setSubmitError(null);
 
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
 
@@ -176,45 +180,66 @@ export default function QuizPage({ params }: { params: { id: string } }) {
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setResults(data);
+      const data = await res.json();
 
-        // Update user state
-        if (data.user) {
-          updateUser(data.user);
-        }
+      if (!res.ok) {
+        // Show specific error message from API
+        const errorMsg = data.error || 'Failed to submit quiz';
+        throw new Error(errorMsg);
+      }
+      setResults(data);
 
-        // Celebrate perfect score
-        if (data.attempt.isPerfect) {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 }
-          });
-        }
+      // Update user state
+      if (data.user) {
+        updateUser(data.user);
+      }
 
-        // Show level up modal
-        if (data.leveledUp) {
-          setTimeout(() => {
-            setShowLevelUp(true);
-          }, 500);
-        }
+      // Celebrate perfect score
+      if (data.attempt.isPerfect) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
 
-        // Show achievement modal
-        if (data.achievements?.length > 0) {
-          setTimeout(() => {
-            setUnlockedAchievement(data.achievements[0]);
-            setShowAchievement(true);
-          }, data.leveledUp ? 2500 : 500);
-        }
+      // Show level up modal
+      if (data.leveledUp) {
+        setTimeout(() => {
+          setShowLevelUp(true);
+        }, 500);
+      }
+
+      // Show achievement modal
+      if (data.achievements?.length > 0) {
+        setTimeout(() => {
+          setUnlockedAchievement(data.achievements[0]);
+          setShowAchievement(true);
+        }, data.leveledUp ? 2500 : 500);
       }
     } catch (error) {
-      console.error('Submit failed:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to submit quiz. Please try again.';
+      setSubmitError(errorMsg);
+      setGameState('playing');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // User-controlled next question
+  const handleNextQuestion = useCallback(() => {
+    if (isLastQuestion) {
+      handleSubmitQuiz();
+    } else {
+      nextQuestion();
+      setSelectedOption(null);
+      setShowResult(false);
+      setIsAnswerLocked(false);
+      setEncouragement('');
+      setSubmitError(null);
+      startTimer(quiz?.timeLimit || 30);
+    }
+  }, [isLastQuestion, nextQuestion, startTimer, quiz]);
 
   if (isLoading || !quiz || !currentQuestion) {
     return (
@@ -518,6 +543,54 @@ export default function QuizPage({ params }: { params: { id: string } }) {
                     <p className="text-blue-300 text-sm">
                       💡 {currentQuestion.explanation}
                     </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Error Display */}
+              {submitError && (
+                <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-center">
+                  {submitError}
+                </div>
+              )}
+
+              {/* Next Question Button - User Controlled */}
+              <AnimatePresence>
+                {showResult && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="mt-6 flex justify-center"
+                  >
+                    <button
+                      onClick={handleNextQuestion}
+                      disabled={isSubmitting}
+                      className={cn(
+                        'px-8 py-3 rounded-xl font-cyber font-bold text-lg',
+                        'bg-gradient-to-r from-neon-cyan to-neon-purple',
+                        'hover:shadow-lg hover:shadow-neon-cyan/25 transition-all',
+                        'disabled:opacity-50 disabled:cursor-not-allowed',
+                        'flex items-center gap-2'
+                      )}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="spinner w-5 h-5" />
+                          Submitting...
+                        </>
+                      ) : isLastQuestion ? (
+                        <>
+                          Finish Quiz
+                          <Trophy className="w-5 h-5" />
+                        </>
+                      ) : (
+                        <>
+                          Next Question
+                          <ArrowRight className="w-5 h-5" />
+                        </>
+                      )}
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>

@@ -9,7 +9,7 @@ import {
   Wifi, WifiOff, Volume2, VolumeX, Eye, Send
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/layout/Sidebar';
+import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { useAuthStore } from '@/lib/store';
 import {
   AnimatedBorder, SpotlightCard, ShimmerButton, ParticleField,
@@ -276,7 +276,11 @@ const CreateRoomModal = ({
             <Swords className="w-6 h-6 text-cyan-400" />
             Create Battle Room
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-white"
+            aria-label="Close dialog"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -557,6 +561,7 @@ const BattleLobby = ({
 export default function BattleModePage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const sidebarMargin = useSidebarMargin();
   const [rooms, setRooms] = useState<BattleRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -715,7 +720,7 @@ export default function BattleModePage() {
     <div className="min-h-screen bg-gray-950 text-white flex">
       <Sidebar />
 
-      <main className="flex-1 ml-20 relative overflow-hidden">
+      <main className={`flex-1 relative overflow-hidden transition-all duration-300 ${sidebarMargin}`}>
         {/* Background */}
         <div className="fixed inset-0 pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-gray-950 to-blue-900/20" />

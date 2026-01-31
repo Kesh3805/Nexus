@@ -1,19 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-
-function getUserIdFromRequest(request: Request): string | null {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-
-  try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
-    return decoded.userId;
-  } catch {
-    return null;
-  }
-}
+import { getUserIdFromRequest } from '@/lib/auth';
+import { handleApiError } from '@/lib/api-errors';
 
 export async function GET(request: Request) {
   try {
@@ -151,16 +139,17 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       rankings,
       currentUserRank,
       period,
     });
+    
+    // Cache for 1 minute (leaderboard updates frequently but can be slightly stale)
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+    
+    return response;
   } catch (error) {
-    console.error('Leaderboard error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

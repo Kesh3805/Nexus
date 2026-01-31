@@ -1,32 +1,18 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
+import { getUserIdFromRequest } from '@/lib/auth';
+import { handleApiError, apiErrors } from '@/lib/api-errors';
 
 export async function GET(request: Request) {
   try {
-    const authHeader = request.headers.get('authorization');
+    const userId = getUserIdFromRequest(request);
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.split(' ')[1];
-    
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
+    if (!userId) {
+      throw apiErrors.unauthorized();
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
+      where: { id: userId },
       select: {
         id: true,
         email: true,
@@ -60,15 +46,12 @@ export async function GET(request: Request) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      throw apiErrors.notFound('User');
     }
 
     // Get recent achievements
     const recentAchievements = await prisma.userAchievement.findMany({
-      where: { userId: decoded.userId },
+      where: { userId: userId },
       include: { achievement: true },
       orderBy: { unlockedAt: 'desc' },
       take: 5,
@@ -87,7 +70,7 @@ export async function GET(request: Request) {
     const todayProgress = await prisma.dailyProgress.findUnique({
       where: {
         userId_date: {
-          userId: decoded.userId,
+          userId: userId,
           date: today,
         },
       },
@@ -118,41 +101,29 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Me error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
 
 // Update user profile
 export async function PUT(request: Request) {
   try {
-    const authHeader = request.headers.get('authorization');
+    const userId = getUserIdFromRequest(request);
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const token = authHeader.split(' ')[1];
-    
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { name, displayName, bio, avatarStyle } = body;
+    const { name, displayName, bio, avatarStyle, avatarSeed } = body;
 
     const updatedUser = await prisma.user.update({
-      where: { id: decoded.userId },
+      where: { id: userId },
       data: {
         displayName: displayName || name,
         bio,
         avatarStyle,
+        avatarSeed: avatarSeed || undefined,
       },
       select: {
         id: true,
@@ -160,17 +131,44 @@ export async function PUT(request: Request) {
         username: true,
         displayName: true,
         avatarStyle: true,
+        avatarSeed: true,
         bio: true,
         level: true,
         xp: true,
         totalXp: true,
         streak: true,
+        longestStreak: true,
+        gems: true,
+        coins: true,
+        totalQuizzes: true,
+        totalCorrect: true,
+        totalAnswered: true,
+        perfectQuizzes: true,
       },
     });
 
     return NextResponse.json({ user: updatedUser });
   } catch (error) {
-    console.error('Update error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const userId = getUserIdFromRequest(request);
+    
+    if (!userId) {
+      throw apiErrors.unauthorized();
+    }
+
+    // Delete user - cascading deletes will handle related records
+    // Most relations have onDelete: Cascade in schema
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    return NextResponse.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    return handleApiError(error);
   }
 }

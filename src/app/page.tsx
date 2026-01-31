@@ -80,12 +80,12 @@ const stats = [
 ];
 
 const categories = [
-  { name: 'Science', icon: '🔬', quizzes: 150, color: 'from-cyan-500 to-blue-500' },
-  { name: 'Technology', icon: '💻', quizzes: 200, color: 'from-purple-500 to-pink-500' },
-  { name: 'History', icon: '📜', quizzes: 120, color: 'from-amber-500 to-orange-500' },
-  { name: 'Geography', icon: '🌍', quizzes: 90, color: 'from-green-500 to-emerald-500' },
-  { name: 'Arts', icon: '🎨', quizzes: 80, color: 'from-pink-500 to-rose-500' },
-  { name: 'Sports', icon: '⚽', quizzes: 110, color: 'from-blue-500 to-indigo-500' },
+  { name: 'Ad Tech', icon: '📊', quizzes: 180, color: 'from-cyan-500 to-blue-500' },
+  { name: 'Technology', icon: '💻', quizzes: 250, color: 'from-purple-500 to-pink-500' },
+  { name: 'Marketing', icon: '📢', quizzes: 160, color: 'from-amber-500 to-orange-500' },
+  { name: 'Business', icon: '💼', quizzes: 140, color: 'from-green-500 to-emerald-500' },
+  { name: 'Programming', icon: '⌨️', quizzes: 220, color: 'from-pink-500 to-rose-500' },
+  { name: 'Data Science', icon: '📈', quizzes: 190, color: 'from-blue-500 to-indigo-500' },
 ];
 
 export default function HomePage() {
@@ -103,16 +103,17 @@ export default function HomePage() {
     <div className="min-h-screen bg-gray-950 text-white overflow-hidden">
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <AuroraBackground />
-        <MeteorShower count={15} />
-        <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="#00f5ff" />
-        <ParticleField particleCount={30} />
-        <HexagonGrid className="opacity-30" />
+        {mounted && (
+          <>
+            <AuroraBackground />
+            <MeteorShower count={10} />
+            <ParticleField particleCount={20} />
+          </>
+        )}
         
-        {/* Glowing Orbs */}
-        <GlowingOrb size={600} color="#00f5ff" className="-top-40 -left-40" />
-        <GlowingOrb size={500} color="#a855f7" className="-bottom-40 -right-40" />
-        <GlowingOrb size={300} color="#ff00ff" className="top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" blur={150} />
+        {/* Simplified Glowing Orbs - Less GPU intensive */}
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-32 text-center">
           {/* Floating Badge */}

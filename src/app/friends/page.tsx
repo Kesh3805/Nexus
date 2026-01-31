@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { Card, Badge, Button, Input, Avatar } from '@/components/ui/Elements';
 import { getAvatarUrl, cn } from '@/lib/utils';
 import { 
@@ -48,6 +48,7 @@ interface FriendRequest {
 export default function FriendsPage() {
   const router = useRouter();
   const { token } = useAuthStore();
+  const sidebarMargin = useSidebarMargin();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [receivedRequests, setReceivedRequests] = useState<FriendRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<FriendRequest[]>([]);
@@ -75,8 +76,8 @@ export default function FriendsPage() {
         setReceivedRequests(data.receivedRequests);
         setSentRequests(data.sentRequests);
       }
-    } catch (error) {
-      console.error('Failed to fetch friends');
+    } catch {
+      // Friends will remain empty
     } finally {
       setIsLoading(false);
     }
@@ -136,7 +137,7 @@ export default function FriendsPage() {
     <div className="min-h-screen bg-dark-950">
       <Sidebar />
       
-      <main className="lg:ml-64 min-h-screen">
+      <main className={`min-h-screen transition-all duration-300 ${sidebarMargin}`}>
         <div className="p-4 lg:p-8 max-w-4xl mx-auto">
           {/* Header */}
           <motion.div

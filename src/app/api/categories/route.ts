@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { handleApiError } from '@/lib/api-errors';
 
 export async function GET() {
   try {
@@ -12,12 +13,13 @@ export async function GET() {
       orderBy: { order: 'asc' },
     });
 
-    return NextResponse.json(categories);
+    const response = NextResponse.json(categories);
+    
+    // Cache for 5 minutes (categories rarely change)
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    
+    return response;
   } catch (error) {
-    console.error('Categories error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

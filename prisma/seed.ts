@@ -1,932 +1,294 @@
-import { PrismaClient, Difficulty, AchievementCategory, Rarity, ItemType } from '@prisma/client';
+import { PrismaClient, Difficulty, AchievementCategory, ItemType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🚀 Starting seed...');
+  console.log('🚀 Starting AdTech Quiz seed (Part 1)...');
 
-  // Create Categories
-  const categories = await Promise.all([
-    prisma.category.upsert({
-      where: { slug: 'science' },
-      update: {},
-      create: {
-        name: 'Science',
-        slug: 'science',
-        description: 'Explore the wonders of the universe',
-        icon: '🔬',
-        color: '#00ffff',
-        order: 1,
-      },
-    }),
-    prisma.category.upsert({
-      where: { slug: 'technology' },
-      update: {},
-      create: {
-        name: 'Technology',
-        slug: 'technology',
-        description: 'The digital frontier awaits',
-        icon: '💻',
-        color: '#ff00ff',
-        order: 2,
-      },
-    }),
-    prisma.category.upsert({
-      where: { slug: 'history' },
-      update: {},
-      create: {
-        name: 'History',
-        slug: 'history',
-        description: 'Journey through time',
-        icon: '📜',
-        color: '#ffaa00',
-        order: 3,
-      },
-    }),
-    prisma.category.upsert({
-      where: { slug: 'geography' },
-      update: {},
-      create: {
-        name: 'Geography',
-        slug: 'geography',
-        description: 'Navigate the world',
-        icon: '🌍',
-        color: '#00ff66',
-        order: 4,
-      },
-    }),
-    prisma.category.upsert({
-      where: { slug: 'entertainment' },
-      update: {},
-      create: {
-        name: 'Entertainment',
-        slug: 'entertainment',
-        description: 'Pop culture and beyond',
-        icon: '🎬',
-        color: '#ff6600',
-        order: 5,
-      },
-    }),
-    prisma.category.upsert({
-      where: { slug: 'sports' },
-      update: {},
-      create: {
-        name: 'Sports',
-        slug: 'sports',
-        description: 'Champions are made here',
-        icon: '⚽',
-        color: '#00aaff',
-        order: 6,
-        isLocked: true,
-        unlockLevel: 5,
-      },
-    }),
-  ]);
+  // Clean existing data
+  await prisma.answer.deleteMany();
+  await prisma.quizAttempt.deleteMany();
+  await prisma.question.deleteMany();
+  await prisma.quiz.deleteMany();
+  await prisma.category.deleteMany();
+  await prisma.userAchievement.deleteMany();
+  await prisma.achievement.deleteMany();
+  await prisma.userItem.deleteMany();
+  await prisma.shopItem.deleteMany();
+  await prisma.friendRequest.deleteMany();
+  await prisma.friendship.deleteMany();
+  await prisma.dailyProgress.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.user.deleteMany();
 
-  console.log('✅ Categories created');
-
-  // Create sample quizzes
-  const scienceCategory = categories[0];
-  const techCategory = categories[1];
-
-  const quiz1 = await prisma.quiz.upsert({
-    where: { id: 'quiz-science-basics' },
-    update: {},
-    create: {
-      id: 'quiz-science-basics',
-      title: 'Science Fundamentals',
-      description: 'Test your knowledge of basic scientific concepts',
-      categoryId: scienceCategory.id,
-      difficulty: Difficulty.EASY,
-      timeLimit: 30,
-      xpReward: 50,
-      coinReward: 15,
-      order: 1,
-    },
-  });
-
-  const quiz2 = await prisma.quiz.upsert({
-    where: { id: 'quiz-tech-innovation' },
-    update: {},
-    create: {
-      id: 'quiz-tech-innovation',
-      title: 'Tech Innovations',
-      description: 'How well do you know modern technology?',
-      categoryId: techCategory.id,
-      difficulty: Difficulty.MEDIUM,
-      timeLimit: 25,
-      xpReward: 75,
-      coinReward: 20,
-      order: 1,
-    },
-  });
-
-  // Add questions
-  await prisma.question.createMany({
-    skipDuplicates: true,
-    data: [
-      {
-        id: 'q1',
-        quizId: quiz1.id,
-        text: 'What is the chemical symbol for water?',
-        options: JSON.stringify([
-          { id: 'a', text: 'H2O', isCorrect: true },
-          { id: 'b', text: 'CO2', isCorrect: false },
-          { id: 'c', text: 'NaCl', isCorrect: false },
-          { id: 'd', text: 'O2', isCorrect: false },
-        ]),
-        explanation: 'Water is composed of two hydrogen atoms and one oxygen atom, hence H2O.',
-        order: 1,
-        points: 10,
-      },
-      {
-        id: 'q2',
-        quizId: quiz1.id,
-        text: 'What planet is known as the Red Planet?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Venus', isCorrect: false },
-          { id: 'b', text: 'Mars', isCorrect: true },
-          { id: 'c', text: 'Jupiter', isCorrect: false },
-          { id: 'd', text: 'Saturn', isCorrect: false },
-        ]),
-        explanation: 'Mars appears red due to iron oxide (rust) on its surface.',
-        order: 2,
-        points: 10,
-      },
-      {
-        id: 'q3',
-        quizId: quiz1.id,
-        text: 'What is the speed of light approximately?',
-        options: JSON.stringify([
-          { id: 'a', text: '300,000 km/s', isCorrect: true },
-          { id: 'b', text: '150,000 km/s', isCorrect: false },
-          { id: 'c', text: '500,000 km/s', isCorrect: false },
-          { id: 'd', text: '1,000,000 km/s', isCorrect: false },
-        ]),
-        explanation: 'Light travels at approximately 299,792 km/s in a vacuum.',
-        order: 3,
-        points: 10,
-      },
-      {
-        id: 'q4',
-        quizId: quiz2.id,
-        text: 'Who founded SpaceX?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Jeff Bezos', isCorrect: false },
-          { id: 'b', text: 'Elon Musk', isCorrect: true },
-          { id: 'c', text: 'Bill Gates', isCorrect: false },
-          { id: 'd', text: 'Mark Zuckerberg', isCorrect: false },
-        ]),
-        explanation: 'Elon Musk founded SpaceX in 2002.',
-        order: 1,
-        points: 10,
-      },
-      {
-        id: 'q5',
-        quizId: quiz2.id,
-        text: 'What year was the first iPhone released?',
-        options: JSON.stringify([
-          { id: 'a', text: '2005', isCorrect: false },
-          { id: 'b', text: '2006', isCorrect: false },
-          { id: 'c', text: '2007', isCorrect: true },
-          { id: 'd', text: '2008', isCorrect: false },
-        ]),
-        explanation: 'The first iPhone was released on June 29, 2007.',
-        order: 2,
-        points: 10,
-      },
-      {
-        id: 'q6',
-        quizId: quiz2.id,
-        text: 'What does "AI" stand for?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Automated Intelligence', isCorrect: false },
-          { id: 'b', text: 'Artificial Intelligence', isCorrect: true },
-          { id: 'c', text: 'Advanced Integration', isCorrect: false },
-          { id: 'd', text: 'Algorithmic Interface', isCorrect: false },
-        ]),
-        explanation: 'AI stands for Artificial Intelligence, the simulation of human intelligence by machines.',
-        order: 3,
-        points: 10,
-      },
-      {
-        id: 'q7',
-        quizId: quiz1.id,
-        text: 'What is the largest organ in the human body?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Heart', isCorrect: false },
-          { id: 'b', text: 'Liver', isCorrect: false },
-          { id: 'c', text: 'Skin', isCorrect: true },
-          { id: 'd', text: 'Brain', isCorrect: false },
-        ]),
-        explanation: 'The skin is the largest organ, covering approximately 20 square feet in adults.',
-        order: 4,
-        points: 10,
-      },
-      {
-        id: 'q8',
-        quizId: quiz1.id,
-        text: 'What gas do plants absorb from the atmosphere?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Oxygen', isCorrect: false },
-          { id: 'b', text: 'Carbon Dioxide', isCorrect: true },
-          { id: 'c', text: 'Nitrogen', isCorrect: false },
-          { id: 'd', text: 'Hydrogen', isCorrect: false },
-        ]),
-        explanation: 'Plants absorb CO2 for photosynthesis and release oxygen.',
-        order: 5,
-        points: 10,
-      },
-    ],
-  });
-
-  // Create History Quiz
-  const historyCategory = categories[2];
-  const quiz3 = await prisma.quiz.upsert({
-    where: { id: 'quiz-history-legends' },
-    update: {},
-    create: {
-      id: 'quiz-history-legends',
-      title: 'History Legends',
-      description: 'Journey through the greatest moments in history',
-      categoryId: historyCategory.id,
-      difficulty: Difficulty.MEDIUM,
-      timeLimit: 35,
-      xpReward: 80,
-      coinReward: 25,
-      order: 1,
-    },
-  });
-
-  // Create Geography Quiz
-  const geoCategory = categories[3];
-  const quiz4 = await prisma.quiz.upsert({
-    where: { id: 'quiz-geography-explorer' },
-    update: {},
-    create: {
-      id: 'quiz-geography-explorer',
-      title: 'Geography Explorer',
-      description: 'Test your knowledge of world geography',
-      categoryId: geoCategory.id,
-      difficulty: Difficulty.EASY,
-      timeLimit: 30,
-      xpReward: 60,
-      coinReward: 20,
-      order: 1,
-    },
-  });
-
-  // Create Entertainment Quiz
-  const entertainmentCategory = categories[4];
-  const quiz5 = await prisma.quiz.upsert({
-    where: { id: 'quiz-entertainment-buzz' },
-    update: {},
-    create: {
-      id: 'quiz-entertainment-buzz',
-      title: 'Entertainment Buzz',
-      description: 'Movies, music, and pop culture',
-      categoryId: entertainmentCategory.id,
-      difficulty: Difficulty.EASY,
-      timeLimit: 25,
-      xpReward: 55,
-      coinReward: 18,
-      order: 1,
-    },
-  });
-
-  // Create Hard Science Quiz  
-  const quiz6 = await prisma.quiz.upsert({
-    where: { id: 'quiz-science-advanced' },
-    update: {},
-    create: {
-      id: 'quiz-science-advanced',
-      title: 'Advanced Science',
-      description: 'For the true science enthusiasts',
-      categoryId: scienceCategory.id,
-      difficulty: Difficulty.HARD,
-      timeLimit: 45,
-      xpReward: 150,
-      coinReward: 40,
-      order: 2,
-    },
-  });
-
-  // Add more questions for all quizzes
-  await prisma.question.createMany({
-    skipDuplicates: true,
-    data: [
-      // History Questions
-      {
-        id: 'h1',
-        quizId: quiz3.id,
-        text: 'In which year did World War II end?',
-        options: JSON.stringify([
-          { id: 'a', text: '1943', isCorrect: false },
-          { id: 'b', text: '1944', isCorrect: false },
-          { id: 'c', text: '1945', isCorrect: true },
-          { id: 'd', text: '1946', isCorrect: false },
-        ]),
-        explanation: 'World War II ended in 1945 with the surrender of Germany and Japan.',
-        order: 1,
-        points: 10,
-      },
-      {
-        id: 'h2',
-        quizId: quiz3.id,
-        text: 'Who was the first President of the United States?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Thomas Jefferson', isCorrect: false },
-          { id: 'b', text: 'George Washington', isCorrect: true },
-          { id: 'c', text: 'Abraham Lincoln', isCorrect: false },
-          { id: 'd', text: 'John Adams', isCorrect: false },
-        ]),
-        explanation: 'George Washington served as the first U.S. President from 1789 to 1797.',
-        order: 2,
-        points: 10,
-      },
-      {
-        id: 'h3',
-        quizId: quiz3.id,
-        text: 'The Great Wall of China was primarily built to protect against invasions from which direction?',
-        options: JSON.stringify([
-          { id: 'a', text: 'South', isCorrect: false },
-          { id: 'b', text: 'East', isCorrect: false },
-          { id: 'c', text: 'North', isCorrect: true },
-          { id: 'd', text: 'West', isCorrect: false },
-        ]),
-        explanation: 'The Great Wall was built to protect against northern nomadic invasions.',
-        order: 3,
-        points: 10,
-      },
-      {
-        id: 'h4',
-        quizId: quiz3.id,
-        text: 'Which ancient civilization built the pyramids of Giza?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Romans', isCorrect: false },
-          { id: 'b', text: 'Greeks', isCorrect: false },
-          { id: 'c', text: 'Egyptians', isCorrect: true },
-          { id: 'd', text: 'Mayans', isCorrect: false },
-        ]),
-        explanation: 'The pyramids were built by ancient Egyptians around 2560 BC.',
-        order: 4,
-        points: 10,
-      },
-      {
-        id: 'h5',
-        quizId: quiz3.id,
-        text: 'The Renaissance period began in which country?',
-        options: JSON.stringify([
-          { id: 'a', text: 'France', isCorrect: false },
-          { id: 'b', text: 'England', isCorrect: false },
-          { id: 'c', text: 'Italy', isCorrect: true },
-          { id: 'd', text: 'Spain', isCorrect: false },
-        ]),
-        explanation: 'The Renaissance began in Italy in the 14th century.',
-        order: 5,
-        points: 10,
-      },
-      // Geography Questions
-      {
-        id: 'g1',
-        quizId: quiz4.id,
-        text: 'What is the largest continent by land area?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Africa', isCorrect: false },
-          { id: 'b', text: 'Asia', isCorrect: true },
-          { id: 'c', text: 'North America', isCorrect: false },
-          { id: 'd', text: 'Europe', isCorrect: false },
-        ]),
-        explanation: 'Asia covers about 44.58 million km², making it the largest continent.',
-        order: 1,
-        points: 10,
-      },
-      {
-        id: 'g2',
-        quizId: quiz4.id,
-        text: 'Which river is the longest in the world?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Amazon', isCorrect: false },
-          { id: 'b', text: 'Yangtze', isCorrect: false },
-          { id: 'c', text: 'Nile', isCorrect: true },
-          { id: 'd', text: 'Mississippi', isCorrect: false },
-        ]),
-        explanation: 'The Nile River is approximately 6,650 km long.',
-        order: 2,
-        points: 10,
-      },
-      {
-        id: 'g3',
-        quizId: quiz4.id,
-        text: 'What is the capital of Australia?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Sydney', isCorrect: false },
-          { id: 'b', text: 'Melbourne', isCorrect: false },
-          { id: 'c', text: 'Canberra', isCorrect: true },
-          { id: 'd', text: 'Brisbane', isCorrect: false },
-        ]),
-        explanation: 'Canberra is the capital city of Australia, not Sydney or Melbourne.',
-        order: 3,
-        points: 10,
-      },
-      {
-        id: 'g4',
-        quizId: quiz4.id,
-        text: 'Mount Everest is located in which mountain range?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Alps', isCorrect: false },
-          { id: 'b', text: 'Andes', isCorrect: false },
-          { id: 'c', text: 'Himalayas', isCorrect: true },
-          { id: 'd', text: 'Rockies', isCorrect: false },
-        ]),
-        explanation: 'Mount Everest is part of the Himalayan mountain range.',
-        order: 4,
-        points: 10,
-      },
-      {
-        id: 'g5',
-        quizId: quiz4.id,
-        text: 'Which country has the most time zones?',
-        options: JSON.stringify([
-          { id: 'a', text: 'USA', isCorrect: false },
-          { id: 'b', text: 'Russia', isCorrect: false },
-          { id: 'c', text: 'France', isCorrect: true },
-          { id: 'd', text: 'China', isCorrect: false },
-        ]),
-        explanation: 'France has 12 time zones due to its overseas territories.',
-        order: 5,
-        points: 10,
-      },
-      // Entertainment Questions
-      {
-        id: 'e1',
-        quizId: quiz5.id,
-        text: 'Which movie won the Academy Award for Best Picture in 2020?',
-        options: JSON.stringify([
-          { id: 'a', text: '1917', isCorrect: false },
-          { id: 'b', text: 'Joker', isCorrect: false },
-          { id: 'c', text: 'Parasite', isCorrect: true },
-          { id: 'd', text: 'Once Upon a Time in Hollywood', isCorrect: false },
-        ]),
-        explanation: 'Parasite made history as the first non-English language film to win Best Picture.',
-        order: 1,
-        points: 10,
-      },
-      {
-        id: 'e2',
-        quizId: quiz5.id,
-        text: 'Who painted the Mona Lisa?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Vincent van Gogh', isCorrect: false },
-          { id: 'b', text: 'Leonardo da Vinci', isCorrect: true },
-          { id: 'c', text: 'Pablo Picasso', isCorrect: false },
-          { id: 'd', text: 'Michelangelo', isCorrect: false },
-        ]),
-        explanation: 'Leonardo da Vinci painted the Mona Lisa between 1503 and 1519.',
-        order: 2,
-        points: 10,
-      },
-      {
-        id: 'e3',
-        quizId: quiz5.id,
-        text: 'What is the best-selling video game of all time?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Tetris', isCorrect: false },
-          { id: 'b', text: 'Minecraft', isCorrect: true },
-          { id: 'c', text: 'GTA V', isCorrect: false },
-          { id: 'd', text: 'Wii Sports', isCorrect: false },
-        ]),
-        explanation: 'Minecraft has sold over 300 million copies across all platforms.',
-        order: 3,
-        points: 10,
-      },
-      {
-        id: 'e4',
-        quizId: quiz5.id,
-        text: 'Which band released the album "Abbey Road"?',
-        options: JSON.stringify([
-          { id: 'a', text: 'The Rolling Stones', isCorrect: false },
-          { id: 'b', text: 'The Beatles', isCorrect: true },
-          { id: 'c', text: 'Led Zeppelin', isCorrect: false },
-          { id: 'd', text: 'Pink Floyd', isCorrect: false },
-        ]),
-        explanation: 'Abbey Road was released by The Beatles in 1969.',
-        order: 4,
-        points: 10,
-      },
-      {
-        id: 'e5',
-        quizId: quiz5.id,
-        text: 'In the Harry Potter series, what is the name of Harry\'s owl?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Errol', isCorrect: false },
-          { id: 'b', text: 'Scabbers', isCorrect: false },
-          { id: 'c', text: 'Hedwig', isCorrect: true },
-          { id: 'd', text: 'Fawkes', isCorrect: false },
-        ]),
-        explanation: 'Hedwig was Harry Potter\'s snowy owl, a gift from Hagrid.',
-        order: 5,
-        points: 10,
-      },
-      // Advanced Science Questions
-      {
-        id: 'as1',
-        quizId: quiz6.id,
-        text: 'What is the Schwarzschild radius associated with?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Nuclear fusion', isCorrect: false },
-          { id: 'b', text: 'Black holes', isCorrect: true },
-          { id: 'c', text: 'Quantum entanglement', isCorrect: false },
-          { id: 'd', text: 'Dark matter', isCorrect: false },
-        ]),
-        explanation: 'The Schwarzschild radius defines the event horizon of a non-rotating black hole.',
-        order: 1,
-        points: 15,
-      },
-      {
-        id: 'as2',
-        quizId: quiz6.id,
-        text: 'Which particle is responsible for the mass of other particles via the Higgs field?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Graviton', isCorrect: false },
-          { id: 'b', text: 'Photon', isCorrect: false },
-          { id: 'c', text: 'Higgs boson', isCorrect: true },
-          { id: 'd', text: 'Neutrino', isCorrect: false },
-        ]),
-        explanation: 'The Higgs boson was discovered in 2012 at CERN and gives mass to particles.',
-        order: 2,
-        points: 15,
-      },
-      {
-        id: 'as3',
-        quizId: quiz6.id,
-        text: 'What is the approximate age of the universe?',
-        options: JSON.stringify([
-          { id: 'a', text: '4.5 billion years', isCorrect: false },
-          { id: 'b', text: '13.8 billion years', isCorrect: true },
-          { id: 'c', text: '20 billion years', isCorrect: false },
-          { id: 'd', text: '8 billion years', isCorrect: false },
-        ]),
-        explanation: 'The universe is approximately 13.8 billion years old based on cosmic microwave background radiation.',
-        order: 3,
-        points: 15,
-      },
-      {
-        id: 'as4',
-        quizId: quiz6.id,
-        text: 'What phenomenon explains why distant galaxies appear to be moving away faster?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Dark energy', isCorrect: true },
-          { id: 'b', text: 'Dark matter', isCorrect: false },
-          { id: 'c', text: 'Gravity waves', isCorrect: false },
-          { id: 'd', text: 'Quantum tunneling', isCorrect: false },
-        ]),
-        explanation: 'Dark energy is responsible for the accelerating expansion of the universe.',
-        order: 4,
-        points: 15,
-      },
-      {
-        id: 'as5',
-        quizId: quiz6.id,
-        text: 'CRISPR-Cas9 is a revolutionary tool used for what purpose?',
-        options: JSON.stringify([
-          { id: 'a', text: 'Protein synthesis', isCorrect: false },
-          { id: 'b', text: 'Gene editing', isCorrect: true },
-          { id: 'c', text: 'Nuclear fission', isCorrect: false },
-          { id: 'd', text: 'Climate modeling', isCorrect: false },
-        ]),
-        explanation: 'CRISPR-Cas9 allows precise editing of DNA sequences in living organisms.',
-        order: 5,
-        points: 15,
-      },
-    ],
-  });
-
-  console.log('✅ Quizzes and questions created');
-
-  // Create Achievements
-  const achievements = await Promise.all([
-    prisma.achievement.upsert({
-      where: { name: 'First Steps' },
-      update: {},
-      create: {
-        name: 'First Steps',
-        description: 'Complete your first quiz',
-        icon: '🎯',
-        category: AchievementCategory.GENERAL,
-        rarity: Rarity.COMMON,
-        requirement: JSON.stringify({ type: 'quizzes_completed', value: 1 }),
-        xpReward: 25,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Quiz Master' },
-      update: {},
-      create: {
-        name: 'Quiz Master',
-        description: 'Complete 50 quizzes',
-        icon: '👑',
-        category: AchievementCategory.MASTERY,
-        rarity: Rarity.EPIC,
-        requirement: JSON.stringify({ type: 'quizzes_completed', value: 50 }),
-        xpReward: 500,
-        gemReward: 50,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'On Fire' },
-      update: {},
-      create: {
-        name: 'On Fire',
-        description: 'Maintain a 7-day streak',
-        icon: '🔥',
-        category: AchievementCategory.STREAK,
-        rarity: Rarity.RARE,
-        requirement: JSON.stringify({ type: 'streak', value: 7 }),
-        xpReward: 200,
-        gemReward: 20,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Perfectionist' },
-      update: {},
-      create: {
-        name: 'Perfectionist',
-        description: 'Get 100% on any quiz',
-        icon: '💎',
-        category: AchievementCategory.ACCURACY,
-        rarity: Rarity.UNCOMMON,
-        requirement: JSON.stringify({ type: 'perfect_quiz', value: 1 }),
-        xpReward: 100,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Speed Demon' },
-      update: {},
-      create: {
-        name: 'Speed Demon',
-        description: 'Complete a quiz in under 30 seconds',
-        icon: '⚡',
-        category: AchievementCategory.SPEED,
-        rarity: Rarity.RARE,
-        requirement: JSON.stringify({ type: 'speed_completion', value: 30 }),
-        xpReward: 150,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Social Butterfly' },
-      update: {},
-      create: {
-        name: 'Social Butterfly',
-        description: 'Add 10 friends',
-        icon: '🦋',
-        category: AchievementCategory.SOCIAL,
-        rarity: Rarity.UNCOMMON,
-        requirement: JSON.stringify({ type: 'friends', value: 10 }),
-        xpReward: 100,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Legend' },
-      update: {},
-      create: {
-        name: 'Legend',
-        description: 'Reach level 50',
-        icon: '🏆',
-        category: AchievementCategory.MASTERY,
-        rarity: Rarity.LEGENDARY,
-        requirement: JSON.stringify({ type: 'level', value: 50 }),
-        xpReward: 1000,
-        gemReward: 100,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Night Owl' },
-      update: {},
-      create: {
-        name: 'Night Owl',
-        description: 'Complete a quiz between midnight and 4 AM',
-        icon: '🦉',
-        category: AchievementCategory.SPECIAL,
-        rarity: Rarity.RARE,
-        requirement: JSON.stringify({ type: 'time_range', start: 0, end: 4 }),
-        xpReward: 75,
-        isSecret: true,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Rising Star' },
-      update: {},
-      create: {
-        name: 'Rising Star',
-        description: 'Reach level 10',
-        icon: '⭐',
-        category: AchievementCategory.MASTERY,
-        rarity: Rarity.UNCOMMON,
-        requirement: JSON.stringify({ type: 'level', value: 10 }),
-        xpReward: 150,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Century Club' },
-      update: {},
-      create: {
-        name: 'Century Club',
-        description: 'Answer 100 questions correctly',
-        icon: '💯',
-        category: AchievementCategory.ACCURACY,
-        rarity: Rarity.RARE,
-        requirement: JSON.stringify({ type: 'correct_answers', value: 100 }),
-        xpReward: 200,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Knowledge Seeker' },
-      update: {},
-      create: {
-        name: 'Knowledge Seeker',
-        description: 'Complete quizzes in 3 different categories',
-        icon: '📚',
-        category: AchievementCategory.GENERAL,
-        rarity: Rarity.UNCOMMON,
-        requirement: JSON.stringify({ type: 'categories_completed', value: 3 }),
-        xpReward: 100,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Unstoppable' },
-      update: {},
-      create: {
-        name: 'Unstoppable',
-        description: 'Maintain a 30-day streak',
-        icon: '🌟',
-        category: AchievementCategory.STREAK,
-        rarity: Rarity.EPIC,
-        requirement: JSON.stringify({ type: 'streak', value: 30 }),
-        xpReward: 500,
-        gemReward: 50,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Five Perfect' },
-      update: {},
-      create: {
-        name: 'Five Perfect',
-        description: 'Get 5 perfect scores',
-        icon: '🏅',
-        category: AchievementCategory.ACCURACY,
-        rarity: Rarity.RARE,
-        requirement: JSON.stringify({ type: 'perfect_quizzes', value: 5 }),
-        xpReward: 250,
-        gemReward: 25,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Early Bird' },
-      update: {},
-      create: {
-        name: 'Early Bird',
-        description: 'Complete a quiz before 6 AM',
-        icon: '🌅',
-        category: AchievementCategory.SPECIAL,
-        rarity: Rarity.RARE,
-        requirement: JSON.stringify({ type: 'time_range', start: 4, end: 6 }),
-        xpReward: 75,
-        isSecret: true,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Collector' },
-      update: {},
-      create: {
-        name: 'Collector',
-        description: 'Earn 1000 coins',
-        icon: '🪙',
-        category: AchievementCategory.GENERAL,
-        rarity: Rarity.UNCOMMON,
-        requirement: JSON.stringify({ type: 'total_coins', value: 1000 }),
-        xpReward: 100,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Weekend Warrior' },
-      update: {},
-      create: {
-        name: 'Weekend Warrior',
-        description: 'Complete 10 quizzes on a weekend',
-        icon: '⚔️',
-        category: AchievementCategory.SPECIAL,
-        rarity: Rarity.RARE,
-        requirement: JSON.stringify({ type: 'weekend_quizzes', value: 10 }),
-        xpReward: 150,
-      },
-    }),
-    prisma.achievement.upsert({
-      where: { name: 'Speed Runner' },
-      update: {},
-      create: {
-        name: 'Speed Runner',
-        description: 'Complete 5 quizzes in under 1 minute each',
-        icon: '🏃',
-        category: AchievementCategory.SPEED,
-        rarity: Rarity.EPIC,
-        requirement: JSON.stringify({ type: 'fast_completions', value: 5, maxTime: 60 }),
-        xpReward: 300,
-        gemReward: 30,
-      },
-    }),
-  ]);
-
-  console.log('✅ Achievements created');
-
-  // Create Shop Items
-  await Promise.all([
-    prisma.shopItem.upsert({
-      where: { id: 'item-avatar-cyber' },
-      update: {},
-      create: {
-        id: 'item-avatar-cyber',
-        name: 'Cyber Avatar Style',
-        description: 'A futuristic cyberpunk avatar style',
-        type: ItemType.AVATAR_STYLE,
-        gemPrice: 50,
-        avatarStyle: 'avataaars',
-      },
-    }),
-    prisma.shopItem.upsert({
-      where: { id: 'item-avatar-pixel' },
-      update: {},
-      create: {
-        id: 'item-avatar-pixel',
-        name: 'Pixel Avatar Style',
-        description: 'Retro pixel art avatar',
-        type: ItemType.AVATAR_STYLE,
-        coinPrice: 500,
-        avatarStyle: 'pixel-art',
-      },
-    }),
-    prisma.shopItem.upsert({
-      where: { id: 'item-xp-boost' },
-      update: {},
-      create: {
-        id: 'item-xp-boost',
-        name: 'XP Boost (2x)',
-        description: 'Double XP for the next quiz',
-        type: ItemType.XP_BOOST,
-        gemPrice: 25,
-        effectData: JSON.stringify({ multiplier: 2, duration: 1 }),
-      },
-    }),
-    prisma.shopItem.upsert({
-      where: { id: 'item-streak-freeze' },
-      update: {},
-      create: {
-        id: 'item-streak-freeze',
-        name: 'Streak Freeze',
-        description: 'Protect your streak for one day',
-        type: ItemType.STREAK_FREEZE,
-        gemPrice: 30,
-        effectData: JSON.stringify({ duration: 1 }),
-      },
-    }),
-  ]);
-
-  console.log('✅ Shop items created');
+  console.log('🧹 Cleaned existing data');
 
   // Create demo user
-  const hashedPassword = await bcrypt.hash('demo123', 12);
-  
-  await prisma.user.upsert({
-    where: { email: 'demo@nexusquiz.com' },
-    update: {},
-    create: {
+  const hashedPassword = await bcrypt.hash('demo123', 10);
+  await prisma.user.create({
+    data: {
       email: 'demo@nexusquiz.com',
-      username: 'DemoPlayer',
+      username: 'AdTechPro',
       password: hashedPassword,
-      displayName: 'Demo Player',
+      coins: 1000,
+      gems: 50,
+      xp: 2500,
       level: 5,
-      xp: 250,
-      totalXp: 1250,
-      streak: 3,
-      longestStreak: 7,
-      gems: 150,
-      coins: 750,
-      totalQuizzes: 15,
-      totalCorrect: 42,
-      totalAnswered: 50,
-      perfectQuizzes: 2,
+      streak: 7,
+      avatarStyle: 'gradient-1',
     },
   });
+  console.log('👤 Created demo user: demo@nexusquiz.com / demo123');
 
-  console.log('✅ Demo user created (email: demo@nexusquiz.com, password: demo123)');
+  // Create 11 Categories (10 chapters + 1 advanced)
+  const categories = [
+    { id: 'cat-basics', name: 'AdTech Basics', slug: 'adtech-basics', description: 'Foundational concepts of advertising technology', icon: '📚', color: '#4F46E5' },
+    { id: 'cat-technology', name: 'AdTech Technology', slug: 'adtech-technology', description: 'Core technology platforms in AdTech', icon: '⚙️', color: '#7C3AED' },
+    { id: 'cat-mediums', name: 'Advertising Mediums', slug: 'advertising-mediums', description: 'Different advertising channels and formats', icon: '📺', color: '#EC4899' },
+    { id: 'cat-adserving', name: 'Ad Serving', slug: 'ad-serving', description: 'How ads are delivered to users', icon: '🎯', color: '#F59E0B' },
+    { id: 'cat-targeting', name: 'Ad Targeting & Budget', slug: 'ad-targeting-budget', description: 'Targeting strategies and budget control', icon: '🎪', color: '#10B981' },
+    { id: 'cat-tracking', name: 'Tracking & Reporting', slug: 'tracking-reporting', description: 'Measurement and analytics in advertising', icon: '📊', color: '#3B82F6' },
+    { id: 'cat-mediabuying', name: 'Media Buying', slug: 'media-buying', description: 'Programmatic and direct media purchasing', icon: '💰', color: '#8B5CF6' },
+    { id: 'cat-userid', name: 'User Identification', slug: 'user-identification', description: 'Identity solutions and user tracking', icon: '🔐', color: '#06B6D4' },
+    { id: 'cat-data', name: 'Data in AdTech', slug: 'data-in-adtech', description: 'Data management and privacy', icon: '🗃️', color: '#EF4444' },
+    { id: 'cat-attribution', name: 'Attribution', slug: 'attribution', description: 'Measuring campaign effectiveness', icon: '📈', color: '#14B8A6' },
+    { id: 'cat-advanced', name: 'Advanced AdTech', slug: 'advanced-adtech', description: 'Advanced concepts and mixed topics', icon: '🚀', color: '#F97316' },
+  ];
 
-  console.log('🎉 Seed completed successfully!');
+  for (const cat of categories) {
+    await prisma.category.upsert({
+      where: { slug: cat.slug },
+      update: {},
+      create: cat,
+    });
+  }
+  console.log('📁 Created 11 categories');
+
+  // Create 11 Quizzes
+  const quizzes = [
+    { id: 'quiz-basics', title: 'AdTech Basics Mastery', description: 'Master the fundamentals of advertising technology', categoryId: 'cat-basics', difficulty: Difficulty.EASY, timeLimit: 600, xpReward: 100, coinReward: 50 },
+    { id: 'quiz-technology', title: 'AdTech Technology Deep Dive', description: 'Explore DSPs, SSPs, DMPs and more', categoryId: 'cat-technology', difficulty: Difficulty.MEDIUM, timeLimit: 900, xpReward: 150, coinReward: 75 },
+    { id: 'quiz-mediums', title: 'Advertising Mediums Explorer', description: 'Learn about display, video, native, and more', categoryId: 'cat-mediums', difficulty: Difficulty.MEDIUM, timeLimit: 900, xpReward: 150, coinReward: 75 },
+    { id: 'quiz-adserving', title: 'Ad Serving Fundamentals', description: 'Understand how ads are served to users', categoryId: 'cat-adserving', difficulty: Difficulty.MEDIUM, timeLimit: 720, xpReward: 140, coinReward: 70 },
+    { id: 'quiz-targeting', title: 'Targeting & Budget Control', description: 'Master audience targeting and budget management', categoryId: 'cat-targeting', difficulty: Difficulty.MEDIUM, timeLimit: 1000, xpReward: 200, coinReward: 100 },
+    { id: 'quiz-tracking', title: 'Tracking & Reporting Pro', description: 'Learn measurement and analytics', categoryId: 'cat-tracking', difficulty: Difficulty.MEDIUM, timeLimit: 800, xpReward: 160, coinReward: 80 },
+    { id: 'quiz-mediabuying', title: 'Media Buying Mastery', description: 'Programmatic and direct buying strategies', categoryId: 'cat-mediabuying', difficulty: Difficulty.HARD, timeLimit: 800, xpReward: 180, coinReward: 90 },
+    { id: 'quiz-userid', title: 'User Identification Expert', description: 'Identity solutions and privacy', categoryId: 'cat-userid', difficulty: Difficulty.HARD, timeLimit: 720, xpReward: 160, coinReward: 80 },
+    { id: 'quiz-data', title: 'Data in AdTech', description: 'Data management, privacy, and regulations', categoryId: 'cat-data', difficulty: Difficulty.HARD, timeLimit: 800, xpReward: 180, coinReward: 90 },
+    { id: 'quiz-attribution', title: 'Attribution Models', description: 'Measuring campaign effectiveness', categoryId: 'cat-attribution', difficulty: Difficulty.HARD, timeLimit: 800, xpReward: 180, coinReward: 90 },
+    { id: 'quiz-advanced', title: 'Advanced AdTech Challenge', description: 'Test your comprehensive AdTech knowledge', categoryId: 'cat-advanced', difficulty: Difficulty.HARD, timeLimit: 1200, xpReward: 300, coinReward: 150 },
+  ];
+
+  for (const quiz of quizzes) {
+    await prisma.quiz.upsert({
+      where: { id: quiz.id },
+      update: {},
+      create: quiz,
+    });
+  }
+  console.log('📝 Created 11 quizzes');
+
+  // Questions 1-120
+  const questions = [
+    // Chapter 1: Basics (Questions 1-8)
+    { id: 'basics_q1', quizId: 'quiz-basics', text: 'What does AdTech stand for?', options: JSON.stringify([{ id: 'a', text: 'Advertising Technology', isCorrect: true }, { id: 'b', text: 'Advanced Technology', isCorrect: false }, { id: 'c', text: 'Advertisement Tracking', isCorrect: false }, { id: 'd', text: 'Automated Tech', isCorrect: false }]), explanation: 'AdTech is short for advertising technology, which refers to software and tools used for managing, delivering, and analyzing digital advertising.', order: 1, points: 10 },
+    { id: 'basics_q2', quizId: 'quiz-basics', text: 'What is an impression in digital advertising?', options: JSON.stringify([{ id: 'a', text: 'Each time a creative is served and displayed', isCorrect: true }, { id: 'b', text: 'When a user clicks on an ad', isCorrect: false }, { id: 'c', text: 'When a user makes a purchase', isCorrect: false }, { id: 'd', text: 'The total campaign budget', isCorrect: false }]), explanation: 'An impression is counted each time a creative (like an ad) is served and displayed on a webpage or app.', order: 2, points: 10 },
+    { id: 'basics_q3', quizId: 'quiz-basics', text: 'What does CPM stand for?', options: JSON.stringify([{ id: 'a', text: 'Cost Per Mille (thousand impressions)', isCorrect: true }, { id: 'b', text: 'Cost Per Million', isCorrect: false }, { id: 'c', text: 'Clicks Per Minute', isCorrect: false }, { id: 'd', text: 'Campaign Performance Metric', isCorrect: false }]), explanation: 'CPM stands for Cost Per Mille (Latin for thousand), representing the cost per 1,000 impressions.', order: 3, points: 10 },
+    { id: 'basics_q4', quizId: 'quiz-basics', text: 'What is a conversion in advertising?', options: JSON.stringify([{ id: 'a', text: 'When a user completes a desired action like purchase or sign-up', isCorrect: true }, { id: 'b', text: 'When an ad is displayed', isCorrect: false }, { id: 'c', text: 'When a user sees an ad', isCorrect: false }, { id: 'd', text: 'When an ad budget is depleted', isCorrect: false }]), explanation: 'A conversion occurs when a user completes a desired action, such as making a purchase, signing up, or downloading an app.', order: 4, points: 10 },
+    { id: 'basics_q5', quizId: 'quiz-basics', text: 'What is a creative in advertising?', options: JSON.stringify([{ id: 'a', text: 'The actual advertisement content (image, video, text)', isCorrect: true }, { id: 'b', text: 'The advertising strategy', isCorrect: false }, { id: 'c', text: 'The target audience', isCorrect: false }, { id: 'd', text: 'The campaign budget', isCorrect: false }]), explanation: 'A creative refers to the actual advertisement content that users see, including images, videos, text, or interactive elements.', order: 5, points: 10 },
+    { id: 'basics_q6', quizId: 'quiz-basics', text: 'What is CTR?', options: JSON.stringify([{ id: 'a', text: 'Click-Through Rate - percentage of impressions that result in clicks', isCorrect: true }, { id: 'b', text: 'Cost To Run', isCorrect: false }, { id: 'c', text: 'Campaign Tracking Report', isCorrect: false }, { id: 'd', text: 'Creative Testing Results', isCorrect: false }]), explanation: 'CTR (Click-Through Rate) is the percentage of impressions that result in clicks, calculated as clicks divided by impressions.', order: 6, points: 10 },
+    { id: 'basics_q7', quizId: 'quiz-basics', text: 'What is a publisher in the AdTech ecosystem?', options: JSON.stringify([{ id: 'a', text: 'A website or app owner that sells ad space', isCorrect: true }, { id: 'b', text: 'A company that creates ads', isCorrect: false }, { id: 'c', text: 'An advertising agency', isCorrect: false }, { id: 'd', text: 'A user who views ads', isCorrect: false }]), explanation: 'A publisher is a website or app owner that has ad space (inventory) available to sell to advertisers.', order: 7, points: 10 },
+    { id: 'basics_q8', quizId: 'quiz-basics', text: 'What is ad inventory?', options: JSON.stringify([{ id: 'a', text: 'The available ad space a publisher has to sell', isCorrect: true }, { id: 'b', text: 'A list of all advertisers', isCorrect: false }, { id: 'c', text: 'The total number of ads created', isCorrect: false }, { id: 'd', text: 'A warehouse for physical ads', isCorrect: false }]), explanation: 'Ad inventory refers to the amount of ad space a publisher has available to sell to advertisers.', order: 8, points: 10 },
+    
+    // Chapter 2: Technology (Questions 9-16)
+    { id: 'tech_q1', quizId: 'quiz-technology', text: 'What is a DSP?', options: JSON.stringify([{ id: 'a', text: 'Demand-Side Platform - used by advertisers to buy ad inventory', isCorrect: true }, { id: 'b', text: 'Digital Service Provider', isCorrect: false }, { id: 'c', text: 'Data Storage Platform', isCorrect: false }, { id: 'd', text: 'Display Service Protocol', isCorrect: false }]), explanation: 'A DSP (Demand-Side Platform) is a platform that allows advertisers and agencies to buy ad inventory from multiple sources through a single interface.', order: 9, points: 10 },
+    { id: 'tech_q2', quizId: 'quiz-technology', text: 'What is an SSP?', options: JSON.stringify([{ id: 'a', text: 'Supply-Side Platform - used by publishers to sell inventory', isCorrect: true }, { id: 'b', text: 'Server Side Processing', isCorrect: false }, { id: 'c', text: 'Social Service Platform', isCorrect: false }, { id: 'd', text: 'Standard Selling Protocol', isCorrect: false }]), explanation: 'An SSP (Supply-Side Platform) helps publishers manage, sell, and optimize their available ad inventory.', order: 10, points: 10 },
+    { id: 'tech_q3', quizId: 'quiz-technology', text: 'What is a DMP?', options: JSON.stringify([{ id: 'a', text: 'Data Management Platform - collects and manages audience data', isCorrect: true }, { id: 'b', text: 'Digital Marketing Platform', isCorrect: false }, { id: 'c', text: 'Display Management Program', isCorrect: false }, { id: 'd', text: 'Demand Matching Protocol', isCorrect: false }]), explanation: 'A DMP (Data Management Platform) collects, organizes, and activates first, second, and third-party audience data for targeting.', order: 11, points: 10 },
+    { id: 'tech_q4', quizId: 'quiz-technology', text: 'What is an ad exchange?', options: JSON.stringify([{ id: 'a', text: 'A marketplace where advertisers and publishers buy/sell inventory in real-time', isCorrect: true }, { id: 'b', text: 'A place to exchange creative ideas', isCorrect: false }, { id: 'c', text: 'A platform to swap ad campaigns', isCorrect: false }, { id: 'd', text: 'A currency exchange for ad payments', isCorrect: false }]), explanation: 'An ad exchange is a digital marketplace that enables advertisers and publishers to buy and sell advertising inventory in real-time auctions.', order: 12, points: 10 },
+    { id: 'tech_q5', quizId: 'quiz-technology', text: 'What is real-time bidding (RTB)?', options: JSON.stringify([{ id: 'a', text: 'Automated auctions for ad impressions that happen in milliseconds', isCorrect: true }, { id: 'b', text: 'Manual bidding on ad space', isCorrect: false }, { id: 'c', text: 'Bidding that takes place over days', isCorrect: false }, { id: 'd', text: 'A type of direct deal', isCorrect: false }]), explanation: 'RTB (Real-Time Bidding) is an automated auction process where ad impressions are bought and sold in real-time, typically in under 100 milliseconds.', order: 13, points: 10 },
+    { id: 'tech_q6', quizId: 'quiz-technology', text: 'What is an ad server?', options: JSON.stringify([{ id: 'a', text: 'Technology that stores and delivers ads to websites and apps', isCorrect: true }, { id: 'b', text: 'A person who serves advertisements', isCorrect: false }, { id: 'c', text: 'A type of web hosting service', isCorrect: false }, { id: 'd', text: 'A database for storing user data', isCorrect: false }]), explanation: 'An ad server is technology that stores advertisements and delivers them to websites, apps, and other digital platforms.', order: 14, points: 10 },
+    { id: 'tech_q7', quizId: 'quiz-technology', text: 'What is a CDP?', options: JSON.stringify([{ id: 'a', text: 'Customer Data Platform - unifies first-party customer data', isCorrect: true }, { id: 'b', text: 'Content Delivery Platform', isCorrect: false }, { id: 'c', text: 'Creative Design Program', isCorrect: false }, { id: 'd', text: 'Campaign Distribution Protocol', isCorrect: false }]), explanation: 'A CDP (Customer Data Platform) collects and unifies first-party customer data from multiple sources to create a single customer view.', order: 15, points: 10 },
+    { id: 'tech_q8', quizId: 'quiz-technology', text: 'What is header bidding?', options: JSON.stringify([{ id: 'a', text: 'A technique where multiple demand sources bid simultaneously before ad server call', isCorrect: true }, { id: 'b', text: 'Bidding on website header ads only', isCorrect: false }, { id: 'c', text: 'A manual bidding process', isCorrect: false }, { id: 'd', text: 'Bidding at the beginning of a campaign', isCorrect: false }]), explanation: 'Header bidding allows multiple demand sources to bid on inventory simultaneously before the publisher ad server is called, increasing competition and revenue.', order: 16, points: 10 },
+    
+    // Chapter 3: Advertising Mediums (Questions 17-24)
+    { id: 'mediums_q1', quizId: 'quiz-mediums', text: 'What is display advertising?', options: JSON.stringify([{ id: 'a', text: 'Visual advertisements like banners, images, and rich media on websites', isCorrect: true }, { id: 'b', text: 'Audio advertisements', isCorrect: false }, { id: 'c', text: 'Text-only advertisements', isCorrect: false }, { id: 'd', text: 'Physical billboard advertisements', isCorrect: false }]), explanation: 'Display advertising refers to visual ads including banners, images, and rich media that appear on websites and apps.', order: 17, points: 10 },
+    { id: 'mediums_q2', quizId: 'quiz-mediums', text: 'What is native advertising?', options: JSON.stringify([{ id: 'a', text: 'Ads that match the look, feel, and function of the media format they appear in', isCorrect: true }, { id: 'b', text: 'Ads created by local businesses', isCorrect: false }, { id: 'c', text: 'Ads in native languages only', isCorrect: false }, { id: 'd', text: 'Ads that cannot be customized', isCorrect: false }]), explanation: 'Native advertising matches the visual design and function of the platform where it appears, providing a less intrusive user experience.', order: 18, points: 10 },
+    { id: 'mediums_q3', quizId: 'quiz-mediums', text: 'What is video advertising?', options: JSON.stringify([{ id: 'a', text: 'Promotional content in video format, including pre-roll, mid-roll, and post-roll', isCorrect: true }, { id: 'b', text: 'Only YouTube ads', isCorrect: false }, { id: 'c', text: 'Static image ads', isCorrect: false }, { id: 'd', text: 'Audio-only advertisements', isCorrect: false }]), explanation: 'Video advertising includes promotional content in video format, such as pre-roll (before content), mid-roll (during), and post-roll (after) ads.', order: 19, points: 10 },
+    { id: 'mediums_q4', quizId: 'quiz-mediums', text: 'What is CTV advertising?', options: JSON.stringify([{ id: 'a', text: 'Connected TV advertising - ads on internet-connected television devices', isCorrect: true }, { id: 'b', text: 'Cable TV advertising', isCorrect: false }, { id: 'c', text: 'Computer Television ads', isCorrect: false }, { id: 'd', text: 'Custom TV campaigns', isCorrect: false }]), explanation: 'CTV (Connected TV) advertising refers to ads delivered through internet-connected television devices like smart TVs, Roku, and Apple TV.', order: 20, points: 10 },
+    { id: 'mediums_q5', quizId: 'quiz-mediums', text: 'What is programmatic audio?', options: JSON.stringify([{ id: 'a', text: 'Automated buying of audio ad inventory on streaming platforms', isCorrect: true }, { id: 'b', text: 'Recording audio advertisements', isCorrect: false }, { id: 'c', text: 'Background music in ads', isCorrect: false }, { id: 'd', text: 'Voice recognition technology', isCorrect: false }]), explanation: 'Programmatic audio is the automated buying and selling of audio ad inventory across streaming music, podcasts, and digital radio platforms.', order: 21, points: 10 },
+    { id: 'mediums_q6', quizId: 'quiz-mediums', text: 'What is DOOH advertising?', options: JSON.stringify([{ id: 'a', text: 'Digital Out-of-Home - digital ads on screens in public spaces', isCorrect: true }, { id: 'b', text: 'Direct Online Ordering Hub', isCorrect: false }, { id: 'c', text: 'Digital Optimization Of Homes', isCorrect: false }, { id: 'd', text: 'Data Out Of Home', isCorrect: false }]), explanation: 'DOOH (Digital Out-of-Home) advertising uses digital screens in public spaces like billboards, transit stations, and shopping centers.', order: 22, points: 10 },
+    { id: 'mediums_q7', quizId: 'quiz-mediums', text: 'What is in-app advertising?', options: JSON.stringify([{ id: 'a', text: 'Advertisements displayed within mobile applications', isCorrect: true }, { id: 'b', text: 'App store listings', isCorrect: false }, { id: 'c', text: 'Advertisements for apps only', isCorrect: false }, { id: 'd', text: 'Push notifications', isCorrect: false }]), explanation: 'In-app advertising refers to ads that appear within mobile applications, including banners, interstitials, and rewarded video ads.', order: 23, points: 10 },
+    { id: 'mediums_q8', quizId: 'quiz-mediums', text: 'What is rich media advertising?', options: JSON.stringify([{ id: 'a', text: 'Interactive ads with advanced features like video, audio, and expandable elements', isCorrect: true }, { id: 'b', text: 'Expensive advertising campaigns', isCorrect: false }, { id: 'c', text: 'Ads for wealthy audiences', isCorrect: false }, { id: 'd', text: 'Text-heavy advertisements', isCorrect: false }]), explanation: 'Rich media ads include advanced features like video, audio, expandable elements, and interactive components that engage users beyond static images.', order: 24, points: 10 },
+    
+    // Chapter 4: Ad Serving (Questions 25-32)
+    { id: 'adserving_q1', quizId: 'quiz-adserving', text: 'What is ad trafficking?', options: JSON.stringify([{ id: 'a', text: 'The process of setting up and managing ad campaigns in an ad server', isCorrect: true }, { id: 'b', text: 'Illegal advertisement trading', isCorrect: false }, { id: 'c', text: 'Moving ads between countries', isCorrect: false }, { id: 'd', text: 'Traffic generation for websites', isCorrect: false }]), explanation: 'Ad trafficking is the process of setting up, configuring, and managing advertising campaigns within an ad server.', order: 25, points: 10 },
+    { id: 'adserving_q2', quizId: 'quiz-adserving', text: 'What is an ad tag?', options: JSON.stringify([{ id: 'a', text: 'A piece of code that calls the ad server to display an ad', isCorrect: true }, { id: 'b', text: 'A label on a physical advertisement', isCorrect: false }, { id: 'c', text: 'A hashtag for social media ads', isCorrect: false }, { id: 'd', text: 'A price tag for ad space', isCorrect: false }]), explanation: 'An ad tag is a piece of HTML or JavaScript code placed on a webpage that calls the ad server to request and display an advertisement.', order: 26, points: 10 },
+    { id: 'adserving_q3', quizId: 'quiz-adserving', text: 'What is ad rotation?', options: JSON.stringify([{ id: 'a', text: 'Displaying different ads in the same ad slot over time', isCorrect: true }, { id: 'b', text: 'Spinning animation in ads', isCorrect: false }, { id: 'c', text: 'Changing ad positions on a page', isCorrect: false }, { id: 'd', text: 'Rotating ad agencies', isCorrect: false }]), explanation: 'Ad rotation involves displaying different advertisements in the same ad placement over time to test performance or provide variety.', order: 27, points: 10 },
+    { id: 'adserving_q4', quizId: 'quiz-adserving', text: 'What is frequency capping?', options: JSON.stringify([{ id: 'a', text: 'Limiting the number of times an ad is shown to the same user', isCorrect: true }, { id: 'b', text: 'Capping the frequency of ad refreshes', isCorrect: false }, { id: 'c', text: 'Limiting radio ad frequencies', isCorrect: false }, { id: 'd', text: 'Maximum speed of ad delivery', isCorrect: false }]), explanation: 'Frequency capping limits how many times a specific ad is shown to the same user within a given time period to prevent ad fatigue.', order: 28, points: 10 },
+    { id: 'adserving_q5', quizId: 'quiz-adserving', text: 'What is a first-party ad server?', options: JSON.stringify([{ id: 'a', text: 'An ad server used by publishers to manage their own inventory', isCorrect: true }, { id: 'b', text: 'The first ad server ever created', isCorrect: false }, { id: 'c', text: 'An ad server for first-time advertisers', isCorrect: false }, { id: 'd', text: 'A primary backup server', isCorrect: false }]), explanation: 'A first-party ad server is used by publishers to manage, serve, and track ads on their own properties.', order: 29, points: 10 },
+    { id: 'adserving_q6', quizId: 'quiz-adserving', text: 'What is a third-party ad server?', options: JSON.stringify([{ id: 'a', text: 'An ad server used by advertisers to track campaigns across multiple publishers', isCorrect: true }, { id: 'b', text: 'A server located in a third country', isCorrect: false }, { id: 'c', text: 'A backup ad server', isCorrect: false }, { id: 'd', text: 'An ad server for three advertisers', isCorrect: false }]), explanation: 'A third-party ad server is used by advertisers and agencies to serve and track ads across multiple publisher sites independently.', order: 30, points: 10 },
+    { id: 'adserving_q7', quizId: 'quiz-adserving', text: 'What is ad decisioning?', options: JSON.stringify([{ id: 'a', text: 'The process of selecting which ad to serve for a given impression', isCorrect: true }, { id: 'b', text: 'Deciding on ad budgets', isCorrect: false }, { id: 'c', text: 'Choosing between agencies', isCorrect: false }, { id: 'd', text: 'User decision to click ads', isCorrect: false }]), explanation: 'Ad decisioning is the real-time process of selecting the most appropriate ad to serve for a specific impression based on targeting and rules.', order: 31, points: 10 },
+    { id: 'adserving_q8', quizId: 'quiz-adserving', text: 'What is latency in ad serving?', options: JSON.stringify([{ id: 'a', text: 'The time delay between requesting and displaying an ad', isCorrect: true }, { id: 'b', text: 'Late payment for ads', isCorrect: false }, { id: 'c', text: 'Ad campaign delays', isCorrect: false }, { id: 'd', text: 'Slow creative approval', isCorrect: false }]), explanation: 'Latency refers to the time delay between when an ad is requested and when it is displayed to the user, which affects user experience.', order: 32, points: 10 },
+    
+    // Chapter 5: Ad Targeting (Questions 33-40)
+    { id: 'targeting_q1', quizId: 'quiz-targeting', text: 'What is contextual targeting?', options: JSON.stringify([{ id: 'a', text: 'Targeting ads based on the content of the webpage', isCorrect: true }, { id: 'b', text: 'Targeting based on user context', isCorrect: false }, { id: 'c', text: 'Targeting based on time of day', isCorrect: false }, { id: 'd', text: 'Targeting based on device type', isCorrect: false }]), explanation: 'Contextual targeting displays ads based on the content of the webpage, matching ad themes to relevant content topics.', order: 33, points: 10 },
+    { id: 'targeting_q2', quizId: 'quiz-targeting', text: 'What is behavioral targeting?', options: JSON.stringify([{ id: 'a', text: 'Targeting based on user online behavior and browsing history', isCorrect: true }, { id: 'b', text: 'Targeting based on offline behavior', isCorrect: false }, { id: 'c', text: 'Targeting based on personality', isCorrect: false }, { id: 'd', text: 'Targeting based on mood', isCorrect: false }]), explanation: 'Behavioral targeting uses data about user online behavior, such as browsing history and past purchases, to serve relevant ads.', order: 34, points: 10 },
+    { id: 'targeting_q3', quizId: 'quiz-targeting', text: 'What is geotargeting?', options: JSON.stringify([{ id: 'a', text: 'Delivering ads based on user geographic location', isCorrect: true }, { id: 'b', text: 'Targeting geology enthusiasts', isCorrect: false }, { id: 'c', text: 'Targeting based on geometry', isCorrect: false }, { id: 'd', text: 'Global advertising targeting', isCorrect: false }]), explanation: 'Geotargeting delivers advertisements to users based on their geographic location, from country level down to specific coordinates.', order: 35, points: 10 },
+    { id: 'targeting_q4', quizId: 'quiz-targeting', text: 'What is retargeting?', options: JSON.stringify([{ id: 'a', text: 'Showing ads to users who previously visited your website or app', isCorrect: true }, { id: 'b', text: 'Targeting the same users repeatedly', isCorrect: false }, { id: 'c', text: 'Adjusting targeting parameters', isCorrect: false }, { id: 'd', text: 'Setting new campaign targets', isCorrect: false }]), explanation: 'Retargeting (or remarketing) shows ads to users who have previously visited your website or app but did not convert.', order: 36, points: 10 },
+    { id: 'targeting_q5', quizId: 'quiz-targeting', text: 'What is demographic targeting?', options: JSON.stringify([{ id: 'a', text: 'Targeting based on age, gender, income, education, etc.', isCorrect: true }, { id: 'b', text: 'Targeting democracies only', isCorrect: false }, { id: 'c', text: 'Targeting based on population density', isCorrect: false }, { id: 'd', text: 'Targeting demographic researchers', isCorrect: false }]), explanation: 'Demographic targeting serves ads based on user characteristics such as age, gender, income level, education, and marital status.', order: 37, points: 10 },
+    { id: 'targeting_q6', quizId: 'quiz-targeting', text: 'What is dayparting?', options: JSON.stringify([{ id: 'a', text: 'Scheduling ads to run during specific times of day', isCorrect: true }, { id: 'b', text: 'Splitting ad budgets by day', isCorrect: false }, { id: 'c', text: 'Running ads only during daytime', isCorrect: false }, { id: 'd', text: 'Daily ad performance reporting', isCorrect: false }]), explanation: 'Dayparting (or ad scheduling) allows advertisers to run ads during specific times of day or days of the week when their audience is most active.', order: 38, points: 10 },
+    { id: 'targeting_q7', quizId: 'quiz-targeting', text: 'What is device targeting?', options: JSON.stringify([{ id: 'a', text: 'Targeting users based on their device type (mobile, desktop, tablet)', isCorrect: true }, { id: 'b', text: 'Targeting tech device manufacturers', isCorrect: false }, { id: 'c', text: 'Targeting IT departments', isCorrect: false }, { id: 'd', text: 'Creating device-specific ads', isCorrect: false }]), explanation: 'Device targeting allows advertisers to serve ads to users based on their device type, including mobile phones, tablets, desktops, and smart TVs.', order: 39, points: 10 },
+    { id: 'targeting_q8', quizId: 'quiz-targeting', text: 'What is a lookalike audience?', options: JSON.stringify([{ id: 'a', text: 'New users who share characteristics with existing customers', isCorrect: true }, { id: 'b', text: 'Users who look similar physically', isCorrect: false }, { id: 'c', text: 'Duplicate user accounts', isCorrect: false }, { id: 'd', text: 'Users viewing the same ads', isCorrect: false }]), explanation: 'A lookalike audience is a targeting segment of new users who share similar characteristics and behaviors with a brand existing customers.', order: 40, points: 10 },
+    
+    // Chapter 6: Tracking (Questions 41-48)
+    { id: 'tracking_q1', quizId: 'quiz-tracking', text: 'What is a tracking pixel?', options: JSON.stringify([{ id: 'a', text: 'A tiny 1x1 image used to track impressions and user actions', isCorrect: true }, { id: 'b', text: 'A high-resolution tracking image', isCorrect: false }, { id: 'c', text: 'A pixel for graphic design', isCorrect: false }, { id: 'd', text: 'A video tracking element', isCorrect: false }]), explanation: 'A tracking pixel is a tiny 1x1 transparent image embedded in ads or webpages to track impressions, opens, and other user actions.', order: 41, points: 10 },
+    { id: 'tracking_q2', quizId: 'quiz-tracking', text: 'What is view-through attribution?', options: JSON.stringify([{ id: 'a', text: 'Crediting conversions to ads that were viewed but not clicked', isCorrect: true }, { id: 'b', text: 'Tracking video views only', isCorrect: false }, { id: 'c', text: 'Viewing attribution reports', isCorrect: false }, { id: 'd', text: 'Transparent attribution methods', isCorrect: false }]), explanation: 'View-through attribution credits conversions to ads that a user saw but did not click, recognizing the impact of ad impressions.', order: 42, points: 10 },
+    { id: 'tracking_q3', quizId: 'quiz-tracking', text: 'What is click-through attribution?', options: JSON.stringify([{ id: 'a', text: 'Crediting conversions to ads that were clicked before converting', isCorrect: true }, { id: 'b', text: 'Tracking all clicks on a page', isCorrect: false }, { id: 'c', text: 'Click-based navigation tracking', isCorrect: false }, { id: 'd', text: 'Through-click measurement', isCorrect: false }]), explanation: 'Click-through attribution gives credit to the ad that a user clicked on before completing a conversion action.', order: 43, points: 10 },
+    { id: 'tracking_q4', quizId: 'quiz-tracking', text: 'What is a conversion pixel?', options: JSON.stringify([{ id: 'a', text: 'A pixel placed on conversion pages to track completed actions', isCorrect: true }, { id: 'b', text: 'A pixel that converts image formats', isCorrect: false }, { id: 'c', text: 'A high-converting ad format', isCorrect: false }, { id: 'd', text: 'A pixel for video conversion', isCorrect: false }]), explanation: 'A conversion pixel is placed on thank-you or confirmation pages to track when users complete desired actions like purchases or sign-ups.', order: 44, points: 10 },
+    { id: 'tracking_q5', quizId: 'quiz-tracking', text: 'What is ROAS?', options: JSON.stringify([{ id: 'a', text: 'Return on Ad Spend - revenue generated per dollar spent on advertising', isCorrect: true }, { id: 'b', text: 'Rate of Ad Success', isCorrect: false }, { id: 'c', text: 'Reach of Advertising System', isCorrect: false }, { id: 'd', text: 'Real-time Optimization and Serving', isCorrect: false }]), explanation: 'ROAS (Return on Ad Spend) measures the revenue generated for every dollar spent on advertising, calculated as revenue divided by ad spend.', order: 45, points: 10 },
+    { id: 'tracking_q6', quizId: 'quiz-tracking', text: 'What is CPA?', options: JSON.stringify([{ id: 'a', text: 'Cost Per Acquisition - cost to acquire one customer or conversion', isCorrect: true }, { id: 'b', text: 'Clicks Per Ad', isCorrect: false }, { id: 'c', text: 'Campaign Performance Analysis', isCorrect: false }, { id: 'd', text: 'Creative Production Agency', isCorrect: false }]), explanation: 'CPA (Cost Per Acquisition) is the cost to acquire one customer or conversion, calculated as total spend divided by number of conversions.', order: 46, points: 10 },
+    { id: 'tracking_q7', quizId: 'quiz-tracking', text: 'What is viewability?', options: JSON.stringify([{ id: 'a', text: 'Whether an ad was actually visible to a user on their screen', isCorrect: true }, { id: 'b', text: 'How many people can view an ad', isCorrect: false }, { id: 'c', text: 'The visual quality of an ad', isCorrect: false }, { id: 'd', text: 'Ad visibility settings', isCorrect: false }]), explanation: 'Viewability measures whether an ad was actually visible on a user screen, not just served. The IAB standard requires 50% of pixels visible for 1 second.', order: 47, points: 10 },
+    { id: 'tracking_q8', quizId: 'quiz-tracking', text: 'What is a UTM parameter?', options: JSON.stringify([{ id: 'a', text: 'URL tags used to track traffic sources in analytics', isCorrect: true }, { id: 'b', text: 'Universal Tracking Method', isCorrect: false }, { id: 'c', text: 'User Targeting Metric', isCorrect: false }, { id: 'd', text: 'Unified Traffic Management', isCorrect: false }]), explanation: 'UTM (Urchin Tracking Module) parameters are tags added to URLs to track the source, medium, campaign, and other details of traffic in analytics.', order: 48, points: 10 },
+    
+    // Chapter 7: Media Buying (Questions 49-56)
+    { id: 'mediabuying_q1', quizId: 'quiz-mediabuying', text: 'What is programmatic advertising?', options: JSON.stringify([{ id: 'a', text: 'Automated buying and selling of digital advertising', isCorrect: true }, { id: 'b', text: 'Programming advertisements with code', isCorrect: false }, { id: 'c', text: 'Scheduling TV programs with ads', isCorrect: false }, { id: 'd', text: 'Manual ad buying process', isCorrect: false }]), explanation: 'Programmatic advertising uses automated technology and algorithms to buy and sell digital advertising in real-time.', order: 49, points: 10 },
+    { id: 'mediabuying_q2', quizId: 'quiz-mediabuying', text: 'What is a private marketplace (PMP)?', options: JSON.stringify([{ id: 'a', text: 'An invitation-only auction where publishers offer premium inventory', isCorrect: true }, { id: 'b', text: 'A marketplace for private companies', isCorrect: false }, { id: 'c', text: 'A secret ad exchange', isCorrect: false }, { id: 'd', text: 'Personal ad buying platform', isCorrect: false }]), explanation: 'A private marketplace is an invitation-only RTB auction where premium publishers offer inventory to select advertisers at negotiated terms.', order: 50, points: 10 },
+    { id: 'mediabuying_q3', quizId: 'quiz-mediabuying', text: 'What is programmatic direct?', options: JSON.stringify([{ id: 'a', text: 'Automated guaranteed deals between specific buyers and sellers', isCorrect: true }, { id: 'b', text: 'Direct mail advertising', isCorrect: false }, { id: 'c', text: 'Directly programmed ads', isCorrect: false }, { id: 'd', text: 'Direct response advertising', isCorrect: false }]), explanation: 'Programmatic direct (or programmatic guaranteed) automates the traditional direct buying process between specific advertisers and publishers.', order: 51, points: 10 },
+    { id: 'mediabuying_q4', quizId: 'quiz-mediabuying', text: 'What is open auction (open exchange)?', options: JSON.stringify([{ id: 'a', text: 'A public RTB marketplace where any advertiser can bid on inventory', isCorrect: true }, { id: 'b', text: 'An auction for open positions', isCorrect: false }, { id: 'c', text: 'A trading exchange that is always open', isCorrect: false }, { id: 'd', text: 'An open-source ad platform', isCorrect: false }]), explanation: 'Open auction is a public real-time bidding marketplace where any qualified advertiser can bid on available inventory from participating publishers.', order: 52, points: 10 },
+    { id: 'mediabuying_q5', quizId: 'quiz-mediabuying', text: 'What is a floor price?', options: JSON.stringify([{ id: 'a', text: 'The minimum CPM a publisher will accept for inventory', isCorrect: true }, { id: 'b', text: 'The lowest price in the market', isCorrect: false }, { id: 'c', text: 'Ground-floor advertising rates', isCorrect: false }, { id: 'd', text: 'Basement level ad placements', isCorrect: false }]), explanation: 'A floor price is the minimum CPM that a publisher will accept for their ad inventory, below which bids are rejected.', order: 53, points: 10 },
+    { id: 'mediabuying_q6', quizId: 'quiz-mediabuying', text: 'What is bid shading?', options: JSON.stringify([{ id: 'a', text: 'Reducing bid prices in first-price auctions to optimize spending', isCorrect: true }, { id: 'b', text: 'Hiding bid amounts', isCorrect: false }, { id: 'c', text: 'Shading bid documents', isCorrect: false }, { id: 'd', text: 'Gradual bid increases', isCorrect: false }]), explanation: 'Bid shading is a technique used in first-price auctions to reduce bid amounts based on historical data to avoid overpaying.', order: 54, points: 10 },
+    { id: 'mediabuying_q7', quizId: 'quiz-mediabuying', text: 'What is the difference between first-price and second-price auctions?', options: JSON.stringify([{ id: 'a', text: 'In first-price you pay your bid; in second-price you pay just above the second-highest bid', isCorrect: true }, { id: 'b', text: 'First-price is faster than second-price', isCorrect: false }, { id: 'c', text: 'First-price is for premium inventory only', isCorrect: false }, { id: 'd', text: 'Second-price auctions are no longer used', isCorrect: false }]), explanation: 'In first-price auctions, winners pay their actual bid. In second-price auctions, winners pay slightly above the second-highest bid amount.', order: 55, points: 10 },
+    { id: 'mediabuying_q8', quizId: 'quiz-mediabuying', text: 'What is supply path optimization (SPO)?', options: JSON.stringify([{ id: 'a', text: 'Reducing intermediaries to buy inventory more directly and efficiently', isCorrect: true }, { id: 'b', text: 'Optimizing supply chains', isCorrect: false }, { id: 'c', text: 'Finding the best suppliers', isCorrect: false }, { id: 'd', text: 'Supply and demand balancing', isCorrect: false }]), explanation: 'SPO involves analyzing and reducing the number of intermediaries in the programmatic supply chain to improve efficiency and transparency.', order: 56, points: 10 },
+    
+    // Chapter 8: User Identification (Questions 57-64)
+    { id: 'userid_q1', quizId: 'quiz-userid', text: 'What is a third-party cookie?', options: JSON.stringify([{ id: 'a', text: 'A cookie set by a domain other than the one the user is visiting', isCorrect: true }, { id: 'b', text: 'A cookie from a third-party bakery', isCorrect: false }, { id: 'c', text: 'The third cookie a user accepts', isCorrect: false }, { id: 'd', text: 'A backup cookie', isCorrect: false }]), explanation: 'A third-party cookie is set by a domain different from the website the user is currently visiting, often used for cross-site tracking.', order: 57, points: 10 },
+    { id: 'userid_q2', quizId: 'quiz-userid', text: 'What is a first-party cookie?', options: JSON.stringify([{ id: 'a', text: 'A cookie set by the website the user is currently visiting', isCorrect: true }, { id: 'b', text: 'The first cookie ever created', isCorrect: false }, { id: 'c', text: 'A premium cookie type', isCorrect: false }, { id: 'd', text: 'A cookie set by first-party sellers', isCorrect: false }]), explanation: 'A first-party cookie is set by the website domain the user is currently visiting, typically used for site functionality and analytics.', order: 58, points: 10 },
+    { id: 'userid_q3', quizId: 'quiz-userid', text: 'What is device fingerprinting?', options: JSON.stringify([{ id: 'a', text: 'Identifying users by unique device characteristics like browser settings and plugins', isCorrect: true }, { id: 'b', text: 'Taking fingerprints from device screens', isCorrect: false }, { id: 'c', text: 'Fingerprint unlock technology', isCorrect: false }, { id: 'd', text: 'Marking devices physically', isCorrect: false }]), explanation: 'Device fingerprinting identifies users by collecting unique device characteristics such as browser type, plugins, screen resolution, and settings.', order: 59, points: 10 },
+    { id: 'userid_q4', quizId: 'quiz-userid', text: 'What is IDFA?', options: JSON.stringify([{ id: 'a', text: 'Identifier for Advertisers - Apple unique device ID for ad tracking', isCorrect: true }, { id: 'b', text: 'International Digital Frequency Association', isCorrect: false }, { id: 'c', text: 'Internet Data Flow Analysis', isCorrect: false }, { id: 'd', text: 'Integrated Digital Format Advertising', isCorrect: false }]), explanation: 'IDFA (Identifier for Advertisers) is Apple unique device identifier used for advertising tracking on iOS devices.', order: 60, points: 10 },
+    { id: 'userid_q5', quizId: 'quiz-userid', text: 'What is a universal ID?', options: JSON.stringify([{ id: 'a', text: 'A cross-platform identifier that works across different websites and devices', isCorrect: true }, { id: 'b', text: 'A universally accepted username', isCorrect: false }, { id: 'c', text: 'A UN-issued identification', isCorrect: false }, { id: 'd', text: 'A single sign-on password', isCorrect: false }]), explanation: 'A universal ID is a persistent identifier that can recognize users across different websites, apps, and devices without relying on third-party cookies.', order: 61, points: 10 },
+    { id: 'userid_q6', quizId: 'quiz-userid', text: 'What is cookie syncing?', options: JSON.stringify([{ id: 'a', text: 'Matching user IDs across different advertising platforms', isCorrect: true }, { id: 'b', text: 'Synchronizing cookie expiration dates', isCorrect: false }, { id: 'c', text: 'Backing up cookies to cloud', isCorrect: false }, { id: 'd', text: 'Syncing cookies across devices', isCorrect: false }]), explanation: 'Cookie syncing is the process of matching user IDs between different advertising platforms to recognize the same user across systems.', order: 62, points: 10 },
+    { id: 'userid_q7', quizId: 'quiz-userid', text: 'What is ATT (App Tracking Transparency)?', options: JSON.stringify([{ id: 'a', text: 'Apple framework requiring apps to get user permission for tracking', isCorrect: true }, { id: 'b', text: 'Automatic Tracking Technology', isCorrect: false }, { id: 'c', text: 'Ad Technology Transparency', isCorrect: false }, { id: 'd', text: 'Application Testing Tool', isCorrect: false }]), explanation: 'ATT is Apple App Tracking Transparency framework that requires apps to obtain explicit user permission before tracking their data across apps and websites.', order: 63, points: 10 },
+    { id: 'userid_q8', quizId: 'quiz-userid', text: 'What is a probabilistic ID?', options: JSON.stringify([{ id: 'a', text: 'An identifier based on statistical modeling of user behavior patterns', isCorrect: true }, { id: 'b', text: 'A randomly generated ID', isCorrect: false }, { id: 'c', text: 'A temporary identification', isCorrect: false }, { id: 'd', text: 'A probability calculation tool', isCorrect: false }]), explanation: 'A probabilistic ID uses statistical models and algorithms to infer user identity based on behavior patterns without deterministic identifiers.', order: 64, points: 10 },
+    
+    // Chapter 9: Data in AdTech (Questions 65-72)
+    { id: 'data_q1', quizId: 'quiz-data', text: 'What is first-party data?', options: JSON.stringify([{ id: 'a', text: 'Data collected directly from your own audience or customers', isCorrect: true }, { id: 'b', text: 'Data from the first party to sign up', isCorrect: false }, { id: 'c', text: 'Initial campaign data', isCorrect: false }, { id: 'd', text: 'Primary server data', isCorrect: false }]), explanation: 'First-party data is information collected directly from your own audience, customers, or users through your owned channels.', order: 65, points: 10 },
+    { id: 'data_q2', quizId: 'quiz-data', text: 'What is second-party data?', options: JSON.stringify([{ id: 'a', text: 'First-party data shared directly from another company through a partnership', isCorrect: true }, { id: 'b', text: 'Data that has been processed twice', isCorrect: false }, { id: 'c', text: 'Secondary backup data', isCorrect: false }, { id: 'd', text: 'Data from a secondary source', isCorrect: false }]), explanation: 'Second-party data is essentially another company first-party data that is shared directly with you through a partnership or agreement.', order: 66, points: 10 },
+    { id: 'data_q3', quizId: 'quiz-data', text: 'What is third-party data?', options: JSON.stringify([{ id: 'a', text: 'Data purchased from external providers who aggregate from multiple sources', isCorrect: true }, { id: 'b', text: 'Data from a third-party app', isCorrect: false }, { id: 'c', text: 'Tertiary data storage', isCorrect: false }, { id: 'd', text: 'Three-way data sharing', isCorrect: false }]), explanation: 'Third-party data is purchased from external data providers who collect and aggregate data from multiple sources not directly connected to your business.', order: 67, points: 10 },
+    { id: 'data_q4', quizId: 'quiz-data', text: 'What is GDPR?', options: JSON.stringify([{ id: 'a', text: 'General Data Protection Regulation - EU privacy law', isCorrect: true }, { id: 'b', text: 'Global Data Processing Rules', isCorrect: false }, { id: 'c', text: 'General Digital Privacy Rights', isCorrect: false }, { id: 'd', text: 'Government Data Protection Requirements', isCorrect: false }]), explanation: 'GDPR is the General Data Protection Regulation, a comprehensive EU privacy law that governs how personal data is collected and processed.', order: 68, points: 10 },
+    { id: 'data_q5', quizId: 'quiz-data', text: 'What is CCPA?', options: JSON.stringify([{ id: 'a', text: 'California Consumer Privacy Act - California state privacy law', isCorrect: true }, { id: 'b', text: 'Consumer Campaign Privacy Association', isCorrect: false }, { id: 'c', text: 'Central Cookie Protection Agency', isCorrect: false }, { id: 'd', text: 'Customer Content Privacy Agreement', isCorrect: false }]), explanation: 'CCPA is the California Consumer Privacy Act, a state privacy law giving California residents rights over their personal information.', order: 69, points: 10 },
+    { id: 'data_q6', quizId: 'quiz-data', text: 'What is data clean room?', options: JSON.stringify([{ id: 'a', text: 'A secure environment where multiple parties can analyze combined data without sharing raw data', isCorrect: true }, { id: 'b', text: 'A sanitized server room', isCorrect: false }, { id: 'c', text: 'A data deletion facility', isCorrect: false }, { id: 'd', text: 'A clean data storage format', isCorrect: false }]), explanation: 'A data clean room is a secure environment that allows multiple parties to analyze combined datasets without exposing raw data to each other.', order: 70, points: 10 },
+    { id: 'data_q7', quizId: 'quiz-data', text: 'What is consent management?', options: JSON.stringify([{ id: 'a', text: 'Obtaining and managing user permission for data collection and processing', isCorrect: true }, { id: 'b', text: 'Managing content approvals', isCorrect: false }, { id: 'c', text: 'Team consensus building', isCorrect: false }, { id: 'd', text: 'Contract management', isCorrect: false }]), explanation: 'Consent management involves obtaining, recording, and managing user permission for collecting and processing their personal data in compliance with privacy laws.', order: 71, points: 10 },
+    { id: 'data_q8', quizId: 'quiz-data', text: 'What is data onboarding?', options: JSON.stringify([{ id: 'a', text: 'Converting offline data to online identifiers for digital targeting', isCorrect: true }, { id: 'b', text: 'Training new data analysts', isCorrect: false }, { id: 'c', text: 'Uploading data to servers', isCorrect: false }, { id: 'd', text: 'Data migration process', isCorrect: false }]), explanation: 'Data onboarding is the process of transferring offline customer data to online environments by matching it to digital identifiers.', order: 72, points: 10 },
+    
+    // Chapter 10: Attribution (Questions 73-80)
+    { id: 'attribution_q1', quizId: 'quiz-attribution', text: 'What is multi-touch attribution?', options: JSON.stringify([{ id: 'a', text: 'Giving credit to multiple touchpoints in the customer journey', isCorrect: true }, { id: 'b', text: 'Touchscreen advertising', isCorrect: false }, { id: 'c', text: 'Multiple device tracking', isCorrect: false }, { id: 'd', text: 'Touch-based interactions only', isCorrect: false }]), explanation: 'Multi-touch attribution (MTA) distributes conversion credit across multiple touchpoints in the customer journey rather than just one.', order: 73, points: 10 },
+    { id: 'attribution_q2', quizId: 'quiz-attribution', text: 'What is last-click attribution?', options: JSON.stringify([{ id: 'a', text: 'Giving 100% credit to the last touchpoint before conversion', isCorrect: true }, { id: 'b', text: 'Tracking the last click on a page', isCorrect: false }, { id: 'c', text: 'The final click metric', isCorrect: false }, { id: 'd', text: 'End-of-campaign attribution', isCorrect: false }]), explanation: 'Last-click attribution gives 100% of the conversion credit to the last touchpoint or ad a user interacted with before converting.', order: 74, points: 10 },
+    { id: 'attribution_q3', quizId: 'quiz-attribution', text: 'What is first-click attribution?', options: JSON.stringify([{ id: 'a', text: 'Giving 100% credit to the first touchpoint in the journey', isCorrect: true }, { id: 'b', text: 'Tracking first-time visitors', isCorrect: false }, { id: 'c', text: 'Initial click measurement', isCorrect: false }, { id: 'd', text: 'First impression counting', isCorrect: false }]), explanation: 'First-click attribution gives 100% of the conversion credit to the first touchpoint that introduced the user to the brand.', order: 75, points: 10 },
+    { id: 'attribution_q4', quizId: 'quiz-attribution', text: 'What is linear attribution?', options: JSON.stringify([{ id: 'a', text: 'Distributing credit equally across all touchpoints', isCorrect: true }, { id: 'b', text: 'Tracking linear customer paths', isCorrect: false }, { id: 'c', text: 'Straight-line conversion paths', isCorrect: false }, { id: 'd', text: 'Linear regression analysis', isCorrect: false }]), explanation: 'Linear attribution distributes conversion credit equally across all touchpoints in the customer journey.', order: 76, points: 10 },
+    { id: 'attribution_q5', quizId: 'quiz-attribution', text: 'What is time-decay attribution?', options: JSON.stringify([{ id: 'a', text: 'Giving more credit to touchpoints closer to conversion', isCorrect: true }, { id: 'b', text: 'Tracking ad decay over time', isCorrect: false }, { id: 'c', text: 'Time-based ad expiration', isCorrect: false }, { id: 'd', text: 'Decreasing ad frequency', isCorrect: false }]), explanation: 'Time-decay attribution gives more credit to touchpoints that occurred closer to the time of conversion.', order: 77, points: 10 },
+    { id: 'attribution_q6', quizId: 'quiz-attribution', text: 'What is position-based attribution?', options: JSON.stringify([{ id: 'a', text: 'Giving most credit to first and last touchpoints, less to middle ones', isCorrect: true }, { id: 'b', text: 'Ad positioning strategy', isCorrect: false }, { id: 'c', text: 'Geographic position tracking', isCorrect: false }, { id: 'd', text: 'Page position analytics', isCorrect: false }]), explanation: 'Position-based (or U-shaped) attribution gives 40% credit each to first and last touchpoints, with remaining 20% distributed to middle touchpoints.', order: 78, points: 10 },
+    { id: 'attribution_q7', quizId: 'quiz-attribution', text: 'What is an attribution window?', options: JSON.stringify([{ id: 'a', text: 'The time period during which conversions are credited to ad interactions', isCorrect: true }, { id: 'b', text: 'A display window for attributions', isCorrect: false }, { id: 'c', text: 'A software application window', isCorrect: false }, { id: 'd', text: 'A time slot for ad display', isCorrect: false }]), explanation: 'An attribution window is the time period after an ad interaction during which a conversion can be attributed to that interaction.', order: 79, points: 10 },
+    { id: 'attribution_q8', quizId: 'quiz-attribution', text: 'What is incrementality testing?', options: JSON.stringify([{ id: 'a', text: 'Measuring the true lift of advertising by comparing exposed vs unexposed groups', isCorrect: true }, { id: 'b', text: 'Testing incremental budget increases', isCorrect: false }, { id: 'c', text: 'Gradual testing rollouts', isCorrect: false }, { id: 'd', text: 'Incremental feature testing', isCorrect: false }]), explanation: 'Incrementality testing measures the true causal impact of advertising by comparing outcomes between users exposed to ads and a control group that was not.', order: 80, points: 10 },
+    
+    // Advanced Questions (81-120)
+    { id: 'advanced_q1', quizId: 'quiz-advanced', text: 'What is OpenRTB?', options: JSON.stringify([{ id: 'a', text: 'An open protocol standard for real-time bidding', isCorrect: true }, { id: 'b', text: 'Open Real-Time Broadcasting', isCorrect: false }, { id: 'c', text: 'Online RTB Platform', isCorrect: false }, { id: 'd', text: 'Open Resource Trading Board', isCorrect: false }]), explanation: 'OpenRTB is an open protocol standard developed by IAB Tech Lab that defines how RTB communication should work between DSPs and SSPs.', order: 81, points: 10 },
+    { id: 'advanced_q2', quizId: 'quiz-advanced', text: 'What is VAST?', options: JSON.stringify([{ id: 'a', text: 'Video Ad Serving Template - a standard for video ad serving', isCorrect: true }, { id: 'b', text: 'Very Advanced Serving Technology', isCorrect: false }, { id: 'c', text: 'Video Advertising Standard Template', isCorrect: false }, { id: 'd', text: 'Visual Ad Streaming Technology', isCorrect: false }]), explanation: 'VAST (Video Ad Serving Template) is an IAB standard that defines how video ad servers communicate with video players.', order: 82, points: 10 },
+    { id: 'advanced_q3', quizId: 'quiz-advanced', text: 'What is VPAID?', options: JSON.stringify([{ id: 'a', text: 'Video Player-Ad Interface Definition - enables interactive video ads', isCorrect: true }, { id: 'b', text: 'Video Paid Advertising Interface', isCorrect: false }, { id: 'c', text: 'Video Protocol for Ad Delivery', isCorrect: false }, { id: 'd', text: 'Visual Player Ad Integration', isCorrect: false }]), explanation: 'VPAID (Video Player-Ad Interface Definition) is a standard that enables rich interactive video ad experiences by allowing ads to communicate with video players.', order: 83, points: 10 },
+    { id: 'advanced_q4', quizId: 'quiz-advanced', text: 'What is ads.txt?', options: JSON.stringify([{ id: 'a', text: 'A file that declares authorized digital sellers of publisher inventory', isCorrect: true }, { id: 'b', text: 'A text-based ad format', isCorrect: false }, { id: 'c', text: 'An ad text template', isCorrect: false }, { id: 'd', text: 'Advertising text standards', isCorrect: false }]), explanation: 'Ads.txt (Authorized Digital Sellers) is a file publishers place on their websites to declare which companies are authorized to sell their inventory.', order: 84, points: 10 },
+    { id: 'advanced_q5', quizId: 'quiz-advanced', text: 'What is sellers.json?', options: JSON.stringify([{ id: 'a', text: 'A file that provides transparency about entities in the ad supply chain', isCorrect: true }, { id: 'b', text: 'A JSON format for selling ads', isCorrect: false }, { id: 'c', text: 'Seller configuration file', isCorrect: false }, { id: 'd', text: 'Sales data export format', isCorrect: false }]), explanation: 'Sellers.json is a file that SSPs and exchanges publish to provide transparency about all entities participating in their supply chain.', order: 85, points: 10 },
+    { id: 'advanced_q6', quizId: 'quiz-advanced', text: 'What is ad fraud?', options: JSON.stringify([{ id: 'a', text: 'Deliberate activity that prevents proper delivery of ads to real users', isCorrect: true }, { id: 'b', text: 'Fake advertising claims', isCorrect: false }, { id: 'c', text: 'Misleading ad content', isCorrect: false }, { id: 'd', text: 'Fraudulent payment processing', isCorrect: false }]), explanation: 'Ad fraud is deliberate activity designed to prevent ads from being delivered to real users or to generate fake impressions, clicks, or conversions.', order: 86, points: 10 },
+    { id: 'advanced_q7', quizId: 'quiz-advanced', text: 'What is domain spoofing?', options: JSON.stringify([{ id: 'a', text: 'Misrepresenting the domain where an ad appears to charge premium prices', isCorrect: true }, { id: 'b', text: 'Creating fake domains', isCorrect: false }, { id: 'c', text: 'Domain name registration fraud', isCorrect: false }, { id: 'd', text: 'Spoofing domain passwords', isCorrect: false }]), explanation: 'Domain spoofing is a type of ad fraud where fraudsters misrepresent low-quality inventory as coming from premium publishers.', order: 87, points: 10 },
+    { id: 'advanced_q8', quizId: 'quiz-advanced', text: 'What is click fraud?', options: JSON.stringify([{ id: 'a', text: 'Generating fake clicks on ads to drain advertiser budgets', isCorrect: true }, { id: 'b', text: 'Clicking on competitor ads', isCorrect: false }, { id: 'c', text: 'Invalid click-through tracking', isCorrect: false }, { id: 'd', text: 'Fraudulent CTR reporting', isCorrect: false }]), explanation: 'Click fraud involves generating artificial or fake clicks on ads, either through bots or click farms, to waste advertiser budgets.', order: 88, points: 10 },
+    { id: 'advanced_q9', quizId: 'quiz-advanced', text: 'What is bot traffic?', options: JSON.stringify([{ id: 'a', text: 'Non-human traffic generated by automated programs', isCorrect: true }, { id: 'b', text: 'Traffic from robot manufacturers', isCorrect: false }, { id: 'c', text: 'Bottleneck traffic issues', isCorrect: false }, { id: 'd', text: 'Traffic from AI assistants', isCorrect: false }]), explanation: 'Bot traffic is non-human traffic generated by automated software programs that can inflate metrics and waste ad spend.', order: 89, points: 10 },
+    { id: 'advanced_q10', quizId: 'quiz-advanced', text: 'What is MRC accreditation?', options: JSON.stringify([{ id: 'a', text: 'Media Rating Council certification for measurement companies', isCorrect: true }, { id: 'b', text: 'Marketing Research Certification', isCorrect: false }, { id: 'c', text: 'Media Reporting Compliance', isCorrect: false }, { id: 'd', text: 'Measurement and Rating Criteria', isCorrect: false }]), explanation: 'MRC (Media Rating Council) accreditation certifies that measurement companies follow industry standards for auditing and measuring digital media.', order: 90, points: 10 },
+    { id: 'advanced_q11', quizId: 'quiz-advanced', text: 'What is the IAB?', options: JSON.stringify([{ id: 'a', text: 'Interactive Advertising Bureau - industry organization for digital advertising', isCorrect: true }, { id: 'b', text: 'Internet Ad Board', isCorrect: false }, { id: 'c', text: 'International Advertising Body', isCorrect: false }, { id: 'd', text: 'Integrated Ad Bureau', isCorrect: false }]), explanation: 'The IAB (Interactive Advertising Bureau) is an industry organization that develops standards, conducts research, and provides education for the digital advertising industry.', order: 91, points: 10 },
+    { id: 'advanced_q12', quizId: 'quiz-advanced', text: 'What is cross-device tracking?', options: JSON.stringify([{ id: 'a', text: 'Identifying and tracking users across multiple devices', isCorrect: true }, { id: 'b', text: 'Tracking devices in transit', isCorrect: false }, { id: 'c', text: 'Cross-platform app development', isCorrect: false }, { id: 'd', text: 'Device synchronization', isCorrect: false }]), explanation: 'Cross-device tracking identifies and connects user behavior across multiple devices like phones, tablets, and computers.', order: 92, points: 10 },
+    { id: 'advanced_q13', quizId: 'quiz-advanced', text: 'What is brand lift?', options: JSON.stringify([{ id: 'a', text: 'The measurable increase in brand awareness or perception from advertising', isCorrect: true }, { id: 'b', text: 'Lifting brand products', isCorrect: false }, { id: 'c', text: 'Brand logo elevation', isCorrect: false }, { id: 'd', text: 'Increasing brand prices', isCorrect: false }]), explanation: 'Brand lift measures the positive impact of advertising on brand awareness, favorability, and purchase intent through surveys and studies.', order: 93, points: 10 },
+    { id: 'advanced_q14', quizId: 'quiz-advanced', text: 'What is media mix modeling (MMM)?', options: JSON.stringify([{ id: 'a', text: 'Statistical analysis measuring contribution of each marketing channel', isCorrect: true }, { id: 'b', text: 'Mixing different media types', isCorrect: false }, { id: 'c', text: 'Audio mixing for ads', isCorrect: false }, { id: 'd', text: 'Media blending technology', isCorrect: false }]), explanation: 'Media mix modeling uses statistical analysis to measure the contribution of each marketing channel to business outcomes like sales.', order: 94, points: 10 },
+    { id: 'advanced_q15', quizId: 'quiz-advanced', text: 'What is addressable TV?', options: JSON.stringify([{ id: 'a', text: 'TV advertising that can target specific households with different ads', isCorrect: true }, { id: 'b', text: 'TV with address display', isCorrect: false }, { id: 'c', text: 'Addressable smart TV features', isCorrect: false }, { id: 'd', text: 'TV delivery tracking', isCorrect: false }]), explanation: 'Addressable TV allows advertisers to show different ads to different households watching the same program based on their data profiles.', order: 95, points: 10 },
+    { id: 'advanced_q16', quizId: 'quiz-advanced', text: 'What is OTT advertising?', options: JSON.stringify([{ id: 'a', text: 'Over-the-top advertising - ads delivered via streaming services', isCorrect: true }, { id: 'b', text: 'Over The Top pricing', isCorrect: false }, { id: 'c', text: 'Optimal Targeting Technology', isCorrect: false }, { id: 'd', text: 'Online TV Tracking', isCorrect: false }]), explanation: 'OTT (Over-The-Top) advertising refers to ads delivered through streaming video services that bypass traditional cable/broadcast delivery.', order: 96, points: 10 },
+    { id: 'advanced_q17', quizId: 'quiz-advanced', text: 'What is dynamic creative optimization (DCO)?', options: JSON.stringify([{ id: 'a', text: 'Automatically personalizing ad creatives based on user data', isCorrect: true }, { id: 'b', text: 'Dynamic pricing for creatives', isCorrect: false }, { id: 'c', text: 'Creative animation technology', isCorrect: false }, { id: 'd', text: 'Optimizing creative team dynamics', isCorrect: false }]), explanation: 'DCO automatically customizes ad creative elements like images, text, and offers based on user data to improve relevance and performance.', order: 97, points: 10 },
+    { id: 'advanced_q18', quizId: 'quiz-advanced', text: 'What is a walled garden?', options: JSON.stringify([{ id: 'a', text: 'A closed ecosystem like Google or Facebook with restricted data access', isCorrect: true }, { id: 'b', text: 'A gardening website', isCorrect: false }, { id: 'c', text: 'A secure server room', isCorrect: false }, { id: 'd', text: 'A premium ad network', isCorrect: false }]), explanation: 'A walled garden is a closed ecosystem (like Google, Facebook, or Amazon) that controls user data and restricts access for external parties.', order: 98, points: 10 },
+    { id: 'advanced_q19', quizId: 'quiz-advanced', text: 'What is SKAdNetwork?', options: JSON.stringify([{ id: 'a', text: 'Apple privacy framework for measuring mobile ad campaigns', isCorrect: true }, { id: 'b', text: 'A social network for advertisers', isCorrect: false }, { id: 'c', text: 'A mobile SDK platform', isCorrect: false }, { id: 'd', text: 'A Korean ad network', isCorrect: false }]), explanation: 'SKAdNetwork is Apple privacy-preserving framework for measuring the success of mobile advertising campaigns without compromising user privacy.', order: 99, points: 10 },
+    { id: 'advanced_q20', quizId: 'quiz-advanced', text: 'What is the Privacy Sandbox?', options: JSON.stringify([{ id: 'a', text: 'Google initiative to create privacy-preserving web standards', isCorrect: true }, { id: 'b', text: 'A secure browser mode', isCorrect: false }, { id: 'c', text: 'A privacy testing environment', isCorrect: false }, { id: 'd', text: 'A sandboxed app container', isCorrect: false }]), explanation: 'The Privacy Sandbox is Google initiative to develop new web standards for advertising that protect user privacy while supporting ad-funded content.', order: 100, points: 10 },
+    { id: 'advanced_q21', quizId: 'quiz-advanced', text: 'What is Topics API?', options: JSON.stringify([{ id: 'a', text: 'A Privacy Sandbox API that provides interest-based advertising without tracking', isCorrect: true }, { id: 'b', text: 'An API for topic modeling', isCorrect: false }, { id: 'c', text: 'A content categorization tool', isCorrect: false }, { id: 'd', text: 'A discussion forum API', isCorrect: false }]), explanation: 'Topics API is part of Google Privacy Sandbox, allowing interest-based advertising by inferring topics from browsing history without cross-site tracking.', order: 101, points: 10 },
+    { id: 'advanced_q22', quizId: 'quiz-advanced', text: 'What is Protected Audience API (formerly FLEDGE)?', options: JSON.stringify([{ id: 'a', text: 'A Privacy Sandbox API for remarketing without third-party cookies', isCorrect: true }, { id: 'b', text: 'An audience protection tool', isCorrect: false }, { id: 'c', text: 'A content moderation API', isCorrect: false }, { id: 'd', text: 'An anti-fraud system', isCorrect: false }]), explanation: 'Protected Audience API (formerly FLEDGE) enables remarketing and custom audiences without relying on third-party cookies.', order: 102, points: 10 },
+    { id: 'advanced_q23', quizId: 'quiz-advanced', text: 'What is eCPM?', options: JSON.stringify([{ id: 'a', text: 'Effective CPM - normalized metric comparing different pricing models', isCorrect: true }, { id: 'b', text: 'Electronic CPM', isCorrect: false }, { id: 'c', text: 'Enhanced CPM', isCorrect: false }, { id: 'd', text: 'Estimated CPM', isCorrect: false }]), explanation: 'eCPM (effective CPM) is a normalized metric that allows comparison of revenue across different pricing models like CPC, CPA, and flat rates.', order: 103, points: 10 },
+    { id: 'advanced_q24', quizId: 'quiz-advanced', text: 'What is fill rate?', options: JSON.stringify([{ id: 'a', text: 'The percentage of ad requests that are successfully filled with ads', isCorrect: true }, { id: 'b', text: 'Form completion rate', isCorrect: false }, { id: 'c', text: 'Video buffer fill time', isCorrect: false }, { id: 'd', text: 'Storage fill percentage', isCorrect: false }]), explanation: 'Fill rate is the percentage of ad requests that result in an ad being served, an important metric for publisher monetization.', order: 104, points: 10 },
+    { id: 'advanced_q25', quizId: 'quiz-advanced', text: 'What is win rate in programmatic?', options: JSON.stringify([{ id: 'a', text: 'The percentage of bid requests won in RTB auctions', isCorrect: true }, { id: 'b', text: 'Campaign success rate', isCorrect: false }, { id: 'c', text: 'Conversion win percentage', isCorrect: false }, { id: 'd', text: 'Client acquisition rate', isCorrect: false }]), explanation: 'Win rate is the percentage of bid requests where an advertiser bid was selected as the winner in real-time bidding auctions.', order: 105, points: 10 },
+    
+    // Additional Chapter Questions (106-120)
+    { id: 'basics_q9', quizId: 'quiz-basics', text: 'What is the difference between brand advertising and performance advertising?', options: JSON.stringify([{ id: 'a', text: 'Brand focuses on awareness; performance focuses on measurable actions', isCorrect: true }, { id: 'b', text: 'Brand is more expensive', isCorrect: false }, { id: 'c', text: 'Performance uses video only', isCorrect: false }, { id: 'd', text: 'There is no difference', isCorrect: false }]), explanation: 'Brand advertising focuses on building awareness and perception over time, while performance advertising aims to drive immediate measurable actions like clicks or purchases.', order: 106, points: 10 },
+    { id: 'basics_q10', quizId: 'quiz-basics', text: 'What is reach in advertising?', options: JSON.stringify([{ id: 'a', text: 'The number of unique users who see your advertisement', isCorrect: true }, { id: 'b', text: 'How far your ad travels', isCorrect: false }, { id: 'c', text: 'The total number of impressions', isCorrect: false }, { id: 'd', text: 'The geographic coverage', isCorrect: false }]), explanation: 'Reach measures the number of unique individuals who are exposed to your advertisement, regardless of how many times they see it.', order: 107, points: 10 },
+    { id: 'basics_q11', quizId: 'quiz-basics', text: 'What is frequency in advertising?', options: JSON.stringify([{ id: 'a', text: 'The average number of times each user sees your ad', isCorrect: true }, { id: 'b', text: 'How often you run campaigns', isCorrect: false }, { id: 'c', text: 'Radio frequency for broadcasts', isCorrect: false }, { id: 'd', text: 'Campaign update frequency', isCorrect: false }]), explanation: 'Frequency is the average number of times each unique user is exposed to your advertisement during a campaign.', order: 108, points: 10 },
+    { id: 'tech_q9', quizId: 'quiz-technology', text: 'What is the main difference between a DMP and CDP?', options: JSON.stringify([{ id: 'a', text: 'CDPs focus on first-party data with persistent profiles; DMPs use third-party data with anonymous profiles', isCorrect: true }, { id: 'b', text: 'They are exactly the same', isCorrect: false }, { id: 'c', text: 'DMPs are newer technology', isCorrect: false }, { id: 'd', text: 'CDPs only work with mobile apps', isCorrect: false }]), explanation: 'CDPs primarily collect and unify first-party data with persistent customer profiles, while DMPs traditionally focus on third-party anonymous data for advertising.', order: 109, points: 10 },
+    { id: 'tech_q10', quizId: 'quiz-technology', text: 'What is an ad network?', options: JSON.stringify([{ id: 'a', text: 'A company that aggregates ad inventory from multiple publishers', isCorrect: true }, { id: 'b', text: 'A network of advertisers', isCorrect: false }, { id: 'c', text: 'A computer network for ads', isCorrect: false }, { id: 'd', text: 'A social network for advertising', isCorrect: false }]), explanation: 'An ad network aggregates ad inventory from multiple publishers and sells it to advertisers, acting as an intermediary in the ad ecosystem.', order: 110, points: 10 },
+    { id: 'tech_q11', quizId: 'quiz-technology', text: 'What is the difference between an ad network and ad exchange?', options: JSON.stringify([{ id: 'a', text: 'Ad exchanges offer real-time auctions; ad networks sell pre-negotiated inventory', isCorrect: true }, { id: 'b', text: 'They are the same thing', isCorrect: false }, { id: 'c', text: 'Ad networks are more advanced', isCorrect: false }, { id: 'd', text: 'Ad exchanges only work with video', isCorrect: false }]), explanation: 'Ad exchanges facilitate real-time auctions for individual impressions, while ad networks typically sell pre-packaged, pre-negotiated inventory bundles.', order: 111, points: 10 },
+    { id: 'tech_q12', quizId: 'quiz-technology', text: 'What is an agency trading desk (ATD)?', options: JSON.stringify([{ id: 'a', text: 'A centralized programmatic buying unit within an advertising agency', isCorrect: true }, { id: 'b', text: 'A physical trading floor', isCorrect: false }, { id: 'c', text: 'An agency desk for trades', isCorrect: false }, { id: 'd', text: 'A trading stock platform', isCorrect: false }]), explanation: 'An agency trading desk is a specialized unit within an advertising agency that manages programmatic media buying across multiple DSPs.', order: 112, points: 10 },
+    { id: 'tech_q13', quizId: 'quiz-technology', text: 'What is a creative management platform (CMP)?', options: JSON.stringify([{ id: 'a', text: 'Technology for building, managing, and optimizing ad creatives at scale', isCorrect: true }, { id: 'b', text: 'A platform for creative professionals', isCorrect: false }, { id: 'c', text: 'Campaign management software', isCorrect: false }, { id: 'd', text: 'Content moderation platform', isCorrect: false }]), explanation: 'A CMP enables advertisers to create, manage, and optimize ad creatives at scale, often supporting dynamic creative optimization.', order: 113, points: 10 },
+    { id: 'tech_q14', quizId: 'quiz-technology', text: 'What is a data onboarder?', options: JSON.stringify([{ id: 'a', text: 'A service that matches offline data to online identifiers', isCorrect: true }, { id: 'b', text: 'A new employee trainer', isCorrect: false }, { id: 'c', text: 'A data upload service', isCorrect: false }, { id: 'd', text: 'A CRM system', isCorrect: false }]), explanation: 'A data onboarder is a service that takes offline customer data and matches it to online identifiers for digital targeting.', order: 114, points: 10 },
+    { id: 'tech_q15', quizId: 'quiz-technology', text: 'What is identity resolution?', options: JSON.stringify([{ id: 'a', text: 'The process of connecting different identifiers to a single user', isCorrect: true }, { id: 'b', text: 'Resolving identity theft issues', isCorrect: false }, { id: 'c', text: 'ID verification service', isCorrect: false }, { id: 'd', text: 'Resolution of identity disputes', isCorrect: false }]), explanation: 'Identity resolution connects different user identifiers (cookies, device IDs, emails) to create a unified view of a single user across touchpoints.', order: 115, points: 10 },
+    { id: 'mediums_q9', quizId: 'quiz-mediums', text: 'What is the difference between pre-roll, mid-roll, and post-roll video ads?', options: JSON.stringify([{ id: 'a', text: 'Pre-roll plays before content, mid-roll during, post-roll after', isCorrect: true }, { id: 'b', text: 'They refer to video quality levels', isCorrect: false }, { id: 'c', text: 'They are different video lengths', isCorrect: false }, { id: 'd', text: 'They indicate pricing tiers', isCorrect: false }]), explanation: 'Pre-roll ads play before video content starts, mid-roll ads play during content breaks, and post-roll ads play after the content ends.', order: 116, points: 10 },
+    { id: 'mediums_q10', quizId: 'quiz-mediums', text: 'What is an outstream video ad?', options: JSON.stringify([{ id: 'a', text: 'Video ads that play outside of video content, like within articles', isCorrect: true }, { id: 'b', text: 'Outdoor video advertising', isCorrect: false }, { id: 'c', text: 'External video streaming', isCorrect: false }, { id: 'd', text: 'Video ads on external sites', isCorrect: false }]), explanation: 'Outstream video ads play outside of video content, typically appearing within article text or feed content, expanding when visible.', order: 117, points: 10 },
+    { id: 'mediums_q11', quizId: 'quiz-mediums', text: 'What is rewarded video advertising?', options: JSON.stringify([{ id: 'a', text: 'Video ads where users receive in-app rewards for watching', isCorrect: true }, { id: 'b', text: 'Videos that win advertising awards', isCorrect: false }, { id: 'c', text: 'High-paying video campaigns', isCorrect: false }, { id: 'd', text: 'Videos with bonus content', isCorrect: false }]), explanation: 'Rewarded video ads offer users in-app incentives (like game currency or extra lives) in exchange for watching a full video ad.', order: 118, points: 10 },
+    { id: 'mediums_q12', quizId: 'quiz-mediums', text: 'What is playable advertising?', options: JSON.stringify([{ id: 'a', text: 'Interactive ads that let users try a game or app before installing', isCorrect: true }, { id: 'b', text: 'Ads with background music', isCorrect: false }, { id: 'c', text: 'Audio playback ads', isCorrect: false }, { id: 'd', text: 'Video game sponsorships', isCorrect: false }]), explanation: 'Playable ads are interactive mini-games or app demos that let users experience a product before downloading or purchasing.', order: 119, points: 10 },
+    { id: 'mediums_q13', quizId: 'quiz-mediums', text: 'What is in-game advertising?', options: JSON.stringify([{ id: 'a', text: 'Ads integrated within video games as part of the game environment', isCorrect: true }, { id: 'b', text: 'Advertising during sports games', isCorrect: false }, { id: 'c', text: 'Game development marketing', isCorrect: false }, { id: 'd', text: 'Esports sponsorships only', isCorrect: false }]), explanation: 'In-game advertising places ads within video game environments, such as virtual billboards, branded items, or sponsored content.', order: 120, points: 10 },
+  ];
+
+  await prisma.question.createMany({
+    data: questions,
+    skipDuplicates: true,
+  });
+  console.log(`📝 Created ${questions.length} questions (Part 1: 1-120)`);
+
+  // Create Achievements
+  const achievements = [
+    { id: 'ach-first-quiz', name: 'First Steps', description: 'Complete your first quiz', icon: '🎯', category: AchievementCategory.GENERAL, gemReward: 5, requirement: JSON.stringify({ type: 'quizzes_completed', value: 1 }) },
+    { id: 'ach-streak-7', name: 'Week Warrior', description: 'Maintain a 7-day streak', icon: '🔥', category: AchievementCategory.STREAK, gemReward: 10, requirement: JSON.stringify({ type: 'streak_days', value: 7 }) },
+    { id: 'ach-perfect-score', name: 'Perfectionist', description: 'Score 100% on any quiz', icon: '💯', category: AchievementCategory.ACCURACY, gemReward: 15, requirement: JSON.stringify({ type: 'perfect_score', value: 1 }) },
+    { id: 'ach-speed-demon', name: 'Speed Demon', description: 'Complete a quiz in under 2 minutes', icon: '⚡', category: AchievementCategory.SPEED, gemReward: 10, requirement: JSON.stringify({ type: 'fast_completion', value: 120 }) },
+    { id: 'ach-social-butterfly', name: 'Social Butterfly', description: 'Add 5 friends', icon: '🦋', category: AchievementCategory.SOCIAL, gemReward: 10, requirement: JSON.stringify({ type: 'friends_count', value: 5 }) },
+    { id: 'ach-collector', name: 'Collector', description: 'Unlock 10 shop items', icon: '🏆', category: AchievementCategory.COLLECTION, gemReward: 20, requirement: JSON.stringify({ type: 'items_owned', value: 10 }) },
+    { id: 'ach-adtech-master', name: 'AdTech Master', description: 'Complete all AdTech quizzes', icon: '🎓', category: AchievementCategory.MASTERY, gemReward: 50, requirement: JSON.stringify({ type: 'all_quizzes_completed', value: 11 }) },
+    { id: 'ach-streak-30', name: 'Monthly Champion', description: 'Maintain a 30-day streak', icon: '👑', category: AchievementCategory.SPECIAL, gemReward: 100, requirement: JSON.stringify({ type: 'streak_days', value: 30 }) },
+  ];
+
+  await prisma.achievement.createMany({
+    data: achievements,
+    skipDuplicates: true,
+  });
+  console.log('🏅 Created 8 achievements');
+
+  // Create Shop Items
+  const shopItems = [
+    { id: 'item-gradient-2', name: 'Ocean Gradient', description: 'Cool blue ocean gradient avatar style', type: ItemType.AVATAR_STYLE, coinPrice: 500, avatarStyle: 'gradient-2' },
+    { id: 'item-gradient-3', name: 'Sunset Gradient', description: 'Warm sunset gradient avatar style', type: ItemType.AVATAR_STYLE, coinPrice: 500, avatarStyle: 'gradient-3' },
+    { id: 'item-frame-gold', name: 'Gold Frame', description: 'Premium gold avatar frame', type: ItemType.AVATAR_FRAME, gemPrice: 25, effectData: JSON.stringify({ frameType: 'gold', borderWidth: 3 }) },
+    { id: 'item-xp-boost', name: 'XP Boost', description: 'Double XP for 1 hour', type: ItemType.XP_BOOST, coinPrice: 200, effectData: JSON.stringify({ multiplier: 2, duration: 3600 }) },
+    { id: 'item-streak-freeze', name: 'Streak Freeze', description: 'Protect your streak for one day', type: ItemType.STREAK_FREEZE, gemPrice: 10, effectData: JSON.stringify({ duration: 86400 }) },
+  ];
+
+  await prisma.shopItem.createMany({
+    data: shopItems,
+    skipDuplicates: true,
+  });
+  console.log('🛒 Created 5 shop items');
+
+  console.log('\n🎉 AdTech Quiz seed (Part 1) completed!');
+  console.log('📊 Summary:');
+  console.log('   - 11 categories');
+  console.log('   - 11 quizzes');
+  console.log('   - 120 questions (Part 1)');
+  console.log('   - 8 achievements');
+  console.log('   - 5 shop items');
+  console.log('\n👤 Demo account: demo@nexusquiz.com / demo123');
+  console.log('\n⏭️  Run "npx tsx prisma/seed2.ts" to add remaining questions');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error('❌ Seed error:', e);
     process.exit(1);
   })
   .finally(async () => {

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { Card, Badge, Avatar } from '@/components/ui/Elements';
 import { getAvatarUrl, cn, formatNumber } from '@/lib/utils';
 import { Trophy, Medal, Flame, Zap, Crown, TrendingUp } from 'lucide-react';
@@ -31,6 +31,7 @@ interface LeaderboardEntry {
 export default function LeaderboardPage() {
   const router = useRouter();
   const { token, user } = useAuthStore();
+  const sidebarMargin = useSidebarMargin();
   const [selectedPeriod, setSelectedPeriod] = useState('weekly');
   const [rankings, setRankings] = useState<LeaderboardEntry[]>([]);
   const [currentUserRank, setCurrentUserRank] = useState<LeaderboardEntry | null>(null);
@@ -53,8 +54,8 @@ export default function LeaderboardPage() {
           setRankings(data.rankings);
           setCurrentUserRank(data.currentUserRank);
         }
-      } catch (error) {
-        console.error('Failed to fetch leaderboard');
+      } catch {
+        // Leaderboard will remain empty
       } finally {
         setIsLoading(false);
       }
@@ -93,7 +94,7 @@ export default function LeaderboardPage() {
     <div className="min-h-screen bg-dark-950">
       <Sidebar />
       
-      <main className="lg:ml-64 min-h-screen">
+      <main className={`min-h-screen transition-all duration-300 ${sidebarMargin}`}>
         <div className="p-4 lg:p-8 max-w-4xl mx-auto">
           {/* Header */}
           <motion.div

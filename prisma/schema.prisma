@@ -174,12 +174,14 @@ model QuizAttempt {
   
   completedAt DateTime?
   startedAt   DateTime @default(now())
+  attemptedAt DateTime @default(now()) // For daily uniqueness
   
   answers     Answer[]
   
   @@index([userId])
   @@index([quizId])
   @@index([completedAt])
+  @@index([userId, attemptedAt])
 }
 
 model Answer {

@@ -1,26 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-
-function getUserIdFromRequest(request: Request): string | null {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-
-  try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
-    return decoded.userId;
-  } catch {
-    return null;
-  }
-}
+import { getUserIdFromRequest } from '@/lib/auth';
+import { handleApiError, apiErrors } from '@/lib/api-errors';
 
 // Get friends and friend requests
 export async function GET(request: Request) {
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiErrors.unauthorized();
     }
 
     // Get friendships
@@ -114,11 +102,7 @@ export async function GET(request: Request) {
       sentRequests,
     });
   } catch (error) {
-    console.error('Friends error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
 
@@ -127,7 +111,7 @@ export async function POST(request: Request) {
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiErrors.unauthorized();
     }
 
     const { username } = await request.json();
@@ -138,14 +122,11 @@ export async function POST(request: Request) {
     });
 
     if (!targetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      throw apiErrors.notFound('User');
     }
 
     if (targetUser.id === userId) {
-      return NextResponse.json(
-        { error: "You can't friend yourself" },
-        { status: 400 }
-      );
+      throw apiErrors.invalidInput("You can't send a friend request to yourself");
     }
 
     // Check existing friendship or request
@@ -159,10 +140,7 @@ export async function POST(request: Request) {
     });
 
     if (existingFriendship) {
-      return NextResponse.json(
-        { error: 'Already friends' },
-        { status: 400 }
-      );
+      throw apiErrors.alreadyExists('Already friends with this user');
     }
 
     const existingRequest = await prisma.friendRequest.findFirst({
@@ -176,10 +154,7 @@ export async function POST(request: Request) {
     });
 
     if (existingRequest) {
-      return NextResponse.json(
-        { error: 'Request already pending' },
-        { status: 400 }
-      );
+      throw apiErrors.alreadyExists('Friend request already pending');
     }
 
     // Create friend request
@@ -215,11 +190,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(friendRequest);
   } catch (error) {
-    console.error('Friend request error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
 
@@ -228,7 +199,7 @@ export async function PATCH(request: Request) {
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiErrors.unauthorized();
     }
 
     const { requestId, action } = await request.json();
@@ -238,7 +209,7 @@ export async function PATCH(request: Request) {
     });
 
     if (!friendRequest || friendRequest.receiverId !== userId) {
-      return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+      throw apiErrors.notFound('Friend request');
     }
 
     if (action === 'accept') {
@@ -276,10 +247,6 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: true, action: 'declined' });
     }
   } catch (error) {
-    console.error('Friend action error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

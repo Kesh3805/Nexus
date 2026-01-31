@@ -8,7 +8,7 @@ import {
   Flame, Heart, TrendingUp, Package, ArrowRight, X, AlertCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/layout/Sidebar';
+import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { useAuthStore } from '@/lib/store';
 import {
   AnimatedBorder, SpotlightCard, ShimmerButton, GlowingOrb, MeteorShower
@@ -459,7 +459,8 @@ const SuccessModal = ({ item, onClose }: { item: ShopItem; onClose: () => void }
 
 export default function ShopPage() {
   const router = useRouter();
-  const { user, setUser } = useAuthStore();
+  const { user, token, setUser } = useAuthStore();
+  const sidebarMargin = useSidebarMargin();
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -478,18 +479,18 @@ export default function ShopPage() {
 
   // Mock shop items
   const mockItems: ShopItem[] = [
-    { id: '1', name: 'Cyber Avatar', description: 'A futuristic cyberpunk avatar style', type: 'AVATAR_STYLE', gemPrice: 50, avatarStyle: 'avataaars' },
-    { id: '2', name: 'Pixel Avatar', description: 'Retro pixel art avatar', type: 'AVATAR_STYLE', coinPrice: 500, avatarStyle: 'pixel-art' },
-    { id: '3', name: 'Bot Avatar', description: 'Robotic avatar for tech lovers', type: 'AVATAR_STYLE', gemPrice: 75, avatarStyle: 'bottts' },
-    { id: '4', name: 'Fun Emoji Avatar', description: 'Expressive emoji-style avatar', type: 'AVATAR_STYLE', coinPrice: 300, avatarStyle: 'fun-emoji' },
-    { id: '5', name: '2x XP Boost', description: 'Double XP for your next quiz', type: 'XP_BOOST', gemPrice: 25 },
-    { id: '6', name: '3x XP Mega Boost', description: 'Triple XP for your next 3 quizzes', type: 'XP_BOOST', gemPrice: 60, isLimited: true },
-    { id: '7', name: 'Streak Freeze', description: 'Protect your streak for one day', type: 'STREAK_FREEZE', gemPrice: 30 },
-    { id: '8', name: 'Streak Shield (3 Days)', description: 'Protect your streak for 3 days', type: 'STREAK_FREEZE', gemPrice: 75, isLimited: true },
-    { id: '9', name: 'Hint Pack (10)', description: '10 hints to eliminate wrong answers', type: 'HINT_PACK', coinPrice: 200 },
-    { id: '10', name: 'Time Boost', description: 'Add 30 seconds to any quiz', type: 'TIME_BOOST', gemPrice: 20 },
-    { id: '11', name: 'Champion Badge', description: 'Exclusive champion profile badge', type: 'SPECIAL_BADGE', gemPrice: 100 },
-    { id: '12', name: 'Legend Badge', description: 'Legendary profile badge', type: 'SPECIAL_BADGE', gemPrice: 200, isLimited: true },
+    { id: '1', name: 'Cyber Avatar', description: 'A futuristic cyberpunk avatar style', type: 'AVATAR_STYLE', gemPrice: 50, coinPrice: null, avatarStyle: 'avataaars' },
+    { id: '2', name: 'Pixel Avatar', description: 'Retro pixel art avatar', type: 'AVATAR_STYLE', gemPrice: null, coinPrice: 500, avatarStyle: 'pixel-art' },
+    { id: '3', name: 'Bot Avatar', description: 'Robotic avatar for tech lovers', type: 'AVATAR_STYLE', gemPrice: 75, coinPrice: null, avatarStyle: 'bottts' },
+    { id: '4', name: 'Fun Emoji Avatar', description: 'Expressive emoji-style avatar', type: 'AVATAR_STYLE', gemPrice: null, coinPrice: 300, avatarStyle: 'fun-emoji' },
+    { id: '5', name: '2x XP Boost', description: 'Double XP for your next quiz', type: 'XP_BOOST', gemPrice: 25, coinPrice: null },
+    { id: '6', name: '3x XP Mega Boost', description: 'Triple XP for your next 3 quizzes', type: 'XP_BOOST', gemPrice: 60, coinPrice: null, isLimited: true },
+    { id: '7', name: 'Streak Freeze', description: 'Protect your streak for one day', type: 'STREAK_FREEZE', gemPrice: 30, coinPrice: null },
+    { id: '8', name: 'Streak Shield (3 Days)', description: 'Protect your streak for 3 days', type: 'STREAK_FREEZE', gemPrice: 75, coinPrice: null, isLimited: true },
+    { id: '9', name: 'Hint Pack (10)', description: '10 hints to eliminate wrong answers', type: 'HINT_PACK', gemPrice: null, coinPrice: 200 },
+    { id: '10', name: 'Time Boost', description: 'Add 30 seconds to any quiz', type: 'TIME_BOOST', gemPrice: 20, coinPrice: null },
+    { id: '11', name: 'Champion Badge', description: 'Exclusive champion profile badge', type: 'SPECIAL_BADGE', gemPrice: 100, coinPrice: null },
+    { id: '12', name: 'Legend Badge', description: 'Legendary profile badge', type: 'SPECIAL_BADGE', gemPrice: 200, coinPrice: null, isLimited: true },
   ];
 
   useEffect(() => {
@@ -511,24 +512,50 @@ export default function ShopPage() {
   };
 
   const confirmPurchase = async () => {
-    if (!purchaseItem || !user) return;
+    if (!purchaseItem || !user || !token) return;
 
     setProcessing(true);
 
-    // Simulate purchase
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      // Make API call to purchase item
+      const response = await fetch('/api/shop/purchase', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          itemId: purchaseItem.id,
+          itemType: purchaseItem.type,
+          gemPrice: purchaseItem.gemPrice,
+          coinPrice: purchaseItem.coinPrice,
+        }),
+      });
 
-    // Update user balance
-    if (purchaseItem.gemPrice) {
-      setUser({ ...user, gems: (user.gems || 0) - purchaseItem.gemPrice });
-    } else if (purchaseItem.coinPrice) {
-      setUser({ ...user, coins: (user.coins || 0) - purchaseItem.coinPrice });
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || 'Purchase failed');
+        setProcessing(false);
+        setPurchaseItem(null);
+        return;
+      }
+
+      const data = await response.json();
+
+      // Update user balance with backend response
+      if (data.user) {
+        setUser(data.user);
+      }
+
+      setOwnedItems([...ownedItems, purchaseItem.id]);
+      setProcessing(false);
+      setPurchaseItem(null);
+      setSuccessItem(purchaseItem);
+    } catch {
+      alert('Failed to complete purchase. Please try again.');
+      setProcessing(false);
+      setPurchaseItem(null);
     }
-
-    setOwnedItems([...ownedItems, purchaseItem.id]);
-    setProcessing(false);
-    setPurchaseItem(null);
-    setSuccessItem(purchaseItem);
   };
 
   if (loading) {
@@ -547,7 +574,7 @@ export default function ShopPage() {
     <div className="min-h-screen bg-gray-950 text-white flex">
       <Sidebar />
 
-      <main className="flex-1 ml-20 relative overflow-hidden">
+      <main className={`flex-1 relative overflow-hidden transition-all duration-300 ${sidebarMargin}`}>
         {/* Background */}
         <div className="fixed inset-0 pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-gray-950 to-pink-900/20" />

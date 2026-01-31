@@ -1,14 +1,19 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, type HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+// Use a simpler props type to avoid Framer Motion conflicts
+interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   glow?: boolean;
   children: React.ReactNode;
+  className?: string;
+  disabled?: boolean;
+  onClick?: () => void;
+  type?: 'button' | 'submit' | 'reset';
 }
 
 export function Button({
@@ -19,7 +24,8 @@ export function Button({
   className,
   children,
   disabled,
-  ...props
+  onClick,
+  type = 'button',
 }: ButtonProps) {
   const baseStyles = `
     relative inline-flex items-center justify-center font-cyber font-medium
@@ -70,7 +76,8 @@ export function Button({
         className
       )}
       disabled={disabled || isLoading}
-      {...props}
+      onClick={onClick}
+      type={type}
     >
       {isLoading ? (
         <div className="flex items-center gap-2">

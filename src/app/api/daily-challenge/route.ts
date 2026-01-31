@@ -2,9 +2,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { getUserIdFromRequest } from '@/lib/auth';
+import { handleApiError, apiErrors } from '@/lib/api-errors';
 
 // Generate daily challenge based on date
 function getDailySeed(date: Date): number {
@@ -20,15 +19,7 @@ function getDailySeed(date: Date): number {
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value;
-    let userId: string | null = null;
-
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-        userId = decoded.userId;
-      } catch {}
-    }
+    const userId = getUserIdFromRequest(request);
 
     const today = new Date();
     const seed = getDailySeed(today);
@@ -42,7 +33,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (quizzes.length === 0) {
-      return NextResponse.json({ error: 'No quizzes available' }, { status: 404 });
+      throw apiErrors.notFound('Daily challenge quizzes');
     }
 
     const dailyQuiz = quizzes[seed % quizzes.length];
@@ -61,7 +52,7 @@ export async function GET(request: NextRequest) {
         where: {
           userId,
           quizId: dailyQuiz.id,
-          createdAt: {
+          startedAt: {
             gte: todayStart,
             lte: todayEnd,
           },
@@ -84,7 +75,7 @@ export async function GET(request: NextRequest) {
     const topScores = await prisma.quizAttempt.findMany({
       where: {
         quizId: dailyQuiz.id,
-        createdAt: {
+        startedAt: {
           gte: todayStart,
           lte: todayEnd,
         },
@@ -135,7 +126,6 @@ export async function GET(request: NextRequest) {
       participantCount: topScores.length,
     });
   } catch (error) {
-    console.error('Daily challenge error:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return handleApiError(error);
   }
 }

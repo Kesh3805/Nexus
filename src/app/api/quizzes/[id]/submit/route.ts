@@ -1,20 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
 import { getLevelFromXp, getStreakBonus } from '@/lib/utils';
-
-function getUserIdFromRequest(request: Request): string | null {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-
-  try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
-    return decoded.userId;
-  } catch {
-    return null;
-  }
-}
+import { getUserIdFromRequest } from '@/lib/auth';
+import { handleApiError, apiErrors } from '@/lib/api-errors';
 
 export async function POST(
   request: Request,
@@ -23,10 +11,15 @@ export async function POST(
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiErrors.unauthorized();
     }
 
-    const { answers, timeSpent } = await request.json();
+    const body = await request.json();
+    const { answers, timeSpent } = body;
+
+    if (!answers || typeof answers !== 'object') {
+      throw apiErrors.invalidInput('Answers are required');
+    }
 
     // Get quiz with questions
     const quiz = await prisma.quiz.findUnique({
@@ -35,7 +28,7 @@ export async function POST(
     });
 
     if (!quiz) {
-      return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+      throw apiErrors.notFound('Quiz');
     }
 
     // Get user
@@ -44,8 +37,33 @@ export async function POST(
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      throw apiErrors.notFound('User');
     }
+
+    // CRITICAL SECURITY: Prevent quiz farming exploit
+    // Check if user already completed this quiz today
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    const existingAttemptToday = await prisma.quizAttempt.findFirst({
+      where: {
+        userId,
+        quizId: params.id,
+        attemptedAt: {
+          gte: todayStart,
+          lt: todayEnd,
+        },
+      },
+    });
+
+    if (existingAttemptToday) {
+      throw apiErrors.alreadyCompleted('This quiz');
+    }
+
+    // Validate timeSpent (prevent negative or overflow values)
+    const validatedTimeSpent = Math.max(0, Math.min(timeSpent || 0, 3600)); // Max 1 hour
 
     // Calculate scores
     let correctCount = 0;
@@ -93,20 +111,46 @@ export async function POST(
     const coinsEarned = Math.floor(quiz.coinReward * (percentage / 100));
 
     // Check if streak should be incremented (first quiz of the day)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Reuse todayStart from anti-farming check above
+    const todayDateOnly = todayStart;
+    const yesterday = new Date(todayDateOnly);
+    yesterday.setDate(yesterday.getDate() - 1);
     
     const todayProgress = await prisma.dailyProgress.findUnique({
       where: {
         userId_date: {
           userId,
-          date: today,
+          date: todayDateOnly,
         },
       },
     });
 
-    const shouldIncrementStreak = !todayProgress || todayProgress.quizzesCompleted === 0;
-    const newStreak = shouldIncrementStreak ? user.streak + 1 : user.streak;
+    const yesterdayProgress = await prisma.dailyProgress.findUnique({
+      where: {
+        userId_date: {
+          userId,
+          date: yesterday,
+        },
+      },
+    });
+
+    // First quiz of today
+    const isFirstQuizToday = !todayProgress || todayProgress.quizzesCompleted === 0;
+    
+    // Determine new streak
+    let newStreak = user.streak;
+    if (isFirstQuizToday) {
+      // Check if user played yesterday to maintain streak
+      if (yesterdayProgress && yesterdayProgress.quizzesCompleted > 0) {
+        newStreak = user.streak + 1; // Continue streak
+      } else if (user.streak === 0) {
+        newStreak = 1; // Start new streak
+      } else {
+        newStreak = 1; // Streak broken, restart
+      }
+    }
+    // If not first quiz today, keep current streak
+    
     const newLongestStreak = Math.max(user.longestStreak, newStreak);
 
     // Create quiz attempt
@@ -120,7 +164,7 @@ export async function POST(
         correctCount,
         incorrectCount,
         skippedCount: 0,
-        timeSpent,
+        timeSpent: validatedTimeSpent,
         isPerfect,
         xpEarned: totalXpEarned,
         coinsEarned,
@@ -162,7 +206,7 @@ export async function POST(
       where: {
         userId_date: {
           userId,
-          date: today,
+          date: todayDateOnly,
         },
       },
       update: {
@@ -175,7 +219,7 @@ export async function POST(
       },
       create: {
         userId,
-        date: today,
+        date: todayDateOnly,
         quizzesCompleted: 1,
         questionsAnswered: quiz.questions.length,
         correctAnswers: correctCount,
@@ -280,15 +324,11 @@ export async function POST(
       leveledUp,
       newLevel: levelInfo.level,
       streak: newStreak,
-      streakIncremented: shouldIncrementStreak,
+      streakIncremented: isFirstQuizToday && newStreak > user.streak,
       achievements: newAchievements,
       user: updatedUser,
     });
   } catch (error) {
-    console.error('Submit error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

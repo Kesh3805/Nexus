@@ -1,9 +1,8 @@
 'use server';
 
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { getUserIdFromRequest } from '@/lib/auth';
+import { handleApiError, apiErrors } from '@/lib/api-errors';
 
 // Power-up types and their effects
 const POWER_UPS = {
@@ -65,9 +64,9 @@ const POWER_UPS = {
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      throw apiErrors.unauthorized();
     }
 
     // Return all available power-ups
@@ -75,35 +74,67 @@ export async function GET(request: NextRequest) {
       powerUps: Object.values(POWER_UPS),
     });
   } catch (error) {
-    console.error('Power-ups fetch error:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      throw apiErrors.unauthorized();
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     const { powerUpId, quizId } = await request.json();
 
     const powerUp = Object.values(POWER_UPS).find(p => p.id === powerUpId);
     if (!powerUp) {
-      return NextResponse.json({ error: 'Invalid power-up' }, { status: 400 });
+      throw apiErrors.invalidInput('Invalid power-up');
     }
 
-    // In production, verify user has enough gems/coins and deduct
-    // For now, just return success
+    // Verify user has enough currency and deduct
+    const prisma = (await import('@/lib/prisma')).default;
+    
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { gems: true, coins: true },
+    });
+
+    if (!user) {
+      throw apiErrors.notFound('User');
+    }
+
+    // Check if user has enough currency
+    if (powerUp.gemCost && user.gems < powerUp.gemCost) {
+      throw apiErrors.insufficientBalance(powerUp.gemCost, user.gems);
+    }
+
+    if (powerUp.coinCost && user.coins < powerUp.coinCost) {
+      throw apiErrors.insufficientBalance(powerUp.coinCost, user.coins);
+    }
+
+    // Deduct currency
+    const updateData: { gems?: number; coins?: number } = {};
+    if (powerUp.gemCost) {
+      updateData.gems = user.gems - powerUp.gemCost;
+    }
+    if (powerUp.coinCost) {
+      updateData.coins = user.coins - powerUp.coinCost;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: { gems: true, coins: true },
+    });
+
     return NextResponse.json({
       success: true,
       powerUp,
       message: `${powerUp.name} activated!`,
+      user: updatedUser,
     });
   } catch (error) {
-    console.error('Power-up activation error:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -7,14 +7,19 @@ export function cn(...inputs: ClassValue[]) {
 
 // XP required for each level (exponential curve)
 export function getXpForLevel(level: number): number {
-  return Math.floor(100 * Math.pow(1.5, level - 1));
+  // Guard against invalid level values
+  const validLevel = Math.max(1, Math.floor(level));
+  return Math.floor(100 * Math.pow(1.5, validLevel - 1));
 }
 
 // Calculate level from total XP
 export function getLevelFromXp(totalXp: number): { level: number; currentXp: number; nextLevelXp: number } {
+  // Guard against negative XP values
+  const safeXp = Math.max(0, Math.floor(totalXp));
+  
   let level = 1;
   let xpNeeded = getXpForLevel(level);
-  let remainingXp = totalXp;
+  let remainingXp = safeXp;
 
   while (remainingXp >= xpNeeded) {
     remainingXp -= xpNeeded;
@@ -29,10 +34,12 @@ export function getLevelFromXp(totalXp: number): { level: number; currentXp: num
   };
 }
 
-// Format large numbers (1000 -> 1K)
+// Format large numbers (1000 -> 1K, -1500 -> -1.5K)
 export function formatNumber(num: number): string {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  if (abs >= 1000000) return sign + (abs / 1000000).toFixed(1) + 'M';
+  if (abs >= 1000) return sign + (abs / 1000).toFixed(1) + 'K';
   return num.toString();
 }
 
@@ -52,7 +59,8 @@ export function getStreakBonus(streak: number, baseXp: number): number {
 
 // Get avatar URL from DiceBear
 export function getAvatarUrl(style: string, seed: string): string {
-  return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+  const safeSeed = encodeURIComponent(seed || 'default');
+  return `https://api.dicebear.com/7.x/${style}/svg?seed=${safeSeed}&backgroundColor=0a0a0a`;
 }
 
 // Difficulty colors

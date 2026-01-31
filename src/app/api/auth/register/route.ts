@@ -1,19 +1,58 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { signToken } from '@/lib/auth';
+import { z } from 'zod';
+import { checkRateLimit, getIdentifier, getRateLimitHeaders, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+import { handleApiError } from '@/lib/api-errors';
+
+const registerSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  username: z.string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(20, 'Username too long')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+  displayName: z.string().max(50, 'Display name too long').optional(),
+});
 
 export async function POST(request: Request) {
   try {
-    const { email, username, password, displayName } = await request.json();
-
-    // Validation
-    if (!email || !username || !password) {
+    // Rate limit check for registration
+    const identifier = getIdentifier(request);
+    const rateLimitResult = checkRateLimit(identifier, RATE_LIMIT_CONFIGS.auth);
+    
+    if (!rateLimitResult.success) {
+      const retryAfter = Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000);
       return NextResponse.json(
-        { error: 'Email, username, and password are required' },
+        { error: `Too many registration attempts. Please try again in ${retryAfter} seconds.` },
+        { 
+          status: 429,
+          headers: {
+            ...getRateLimitHeaders(rateLimitResult),
+            'Retry-After': retryAfter.toString(),
+          },
+        }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    
+    // Validate input with Zod
+    const result = registerSchema.safeParse(body);
+    if (!result.success) {
+      const firstError = result.error.issues?.[0]?.message || 'Invalid input';
+      return NextResponse.json(
+        { error: firstError },
         { status: 400 }
       );
     }
+    
+    const { email, username, password, displayName } = result.data;
 
     // Check if user exists
     const existingUser = await prisma.user.findFirst({
@@ -62,12 +101,8 @@ export async function POST(request: Request) {
       },
     });
 
-    // Generate JWT
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: '7d' }
-    );
+    // Generate JWT using centralized auth
+    const token = signToken(user.id);
 
     // Give first achievement
     const firstAchievement = await prisma.achievement.findFirst({
@@ -87,10 +122,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ user, token });
   } catch (error) {
-    console.error('Registration error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

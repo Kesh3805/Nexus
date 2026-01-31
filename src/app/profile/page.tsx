@@ -9,8 +9,9 @@ import {
   LogOut, Trash2, Eye, EyeOff, Check, Sparkles
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
-import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/layout/Sidebar';
+import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
+import { AuthGuard } from '@/components/layout/AuthGuard';
+import { useEnhancedRouter, useUnsavedChangesWarning } from '@/lib/navigation';
 
 const AVATAR_STYLES = [
   'adventurer', 'adventurer-neutral', 'avataaars', 'avataaars-neutral',
@@ -29,15 +30,17 @@ const THEMES = [
   { id: 'galaxy', name: 'Galaxy', primary: '#a855f7', secondary: '#ec4899', bg: 'from-purple-950' },
 ];
 
-export default function ProfilePage() {
-  const router = useRouter();
-  const { user, setUser, logout } = useAuthStore();
+function ProfilePage() {
+  const router = useEnhancedRouter();
+  const { user, token, setUser, logout } = useAuthStore();
+  const sidebarMargin = useSidebarMargin();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [selectedAvatarStyle, setSelectedAvatarStyle] = useState('adventurer');
   const [selectedTheme, setSelectedTheme] = useState('cyber');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [notifications, setNotifications] = useState({
     achievements: true,
     friends: true,
@@ -61,43 +64,58 @@ export default function ProfilePage() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    
-    fetchProfile();
-  }, [user]);
+  // Warn before leaving with unsaved changes
+  useUnsavedChangesWarning(hasUnsavedChanges && isEditing);
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
+      if (!token) {
+        router.safePush('/login');
+        return;
+      }
+      
       const response = await fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setFormData({
-          name: data.user.name || '',
-          email: data.user.email || '',
-          bio: data.user.bio || '',
-        });
-        setStats({
-          totalQuizzes: data.user._count?.quizAttempts || 0,
-          totalXp: data.user.xp || 0,
-          accuracy: 85, // Calculate from attempts
-          streak: data.user.currentStreak || 0,
-          achievements: data.user._count?.achievements || 0,
-          friends: data.user._count?.friends || 0,
-          rank: 42, // From leaderboard
-          level: data.user.level || 1,
-        });
-        setSelectedAvatarStyle(data.user.avatarStyle || 'adventurer');
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token expired or invalid
+          logout();
+          router.safePush('/login');
+          return;
+        }
+        throw new Error('Failed to fetch profile');
       }
-    } catch (error) {
-      console.error('Failed to fetch profile:', error);
+      
+      const data = await response.json();
+      
+      // Update local state
+      setFormData({
+        name: data.user.displayName || data.user.username || '',
+        email: data.user.email || '',
+        bio: data.user.bio || '',
+      });
+      
+      setStats({
+        totalQuizzes: data.user.totalQuizzes || 0,
+        totalXp: data.user.totalXp || 0,
+        accuracy: data.user.totalAnswered > 0 
+          ? Math.round((data.user.totalCorrect / data.user.totalAnswered) * 100) 
+          : 0,
+        streak: data.user.streak || 0,
+        achievements: data.user.achievementCount || 0,
+        friends: data.user.friendCount || 0,
+        rank: data.rank || 0,
+        level: data.user.level || 1,
+      });
+      
+      setSelectedAvatarStyle(data.user.avatarStyle || 'adventurer');
+      
+      // Update global user state
+      setUser(data.user);
+    } catch {
+      alert('Failed to load profile. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -105,7 +123,14 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     try {
-      const token = localStorage.getItem('token');
+      setLoading(true);
+      
+      if (!token) {
+        alert('Session expired. Please login again.');
+        router.safePush('/login');
+        return;
+      }
+      
       const response = await fetch('/api/auth/me', {
         method: 'PUT',
         headers: {
@@ -113,29 +138,141 @@ export default function ProfilePage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          ...formData,
+          displayName: formData.name,
+          name: formData.name,
+          bio: formData.bio,
           avatarStyle: selectedAvatarStyle,
+          avatarSeed: user?.avatarSeed || user?.email || 'default',
         }),
       });
       
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
+        setUser({
+          ...user!,
+          ...data.user,
+          avatarStyle: selectedAvatarStyle,
+        });
         setIsEditing(false);
+        setHasUnsavedChanges(false);
+        alert('Profile updated successfully!');
+        // Force reload to update avatar everywhere
+        await fetchProfile();
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to save: ${errorData.error || 'Unknown error'}`);
       }
-    } catch (error) {
-      console.error('Failed to save profile:', error);
+    } catch {
+      alert('Network error. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleLogout = () => {
     logout();
-    router.push('/');
+    router.safePush('/');
   };
 
-  const getAvatarUrl = (style: string) => {
-    const seed = user?.email || 'default';
-    return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=0a0a0a`;
+  const handleThemeChange = async (themeId: string) => {
+    setSelectedTheme(themeId);
+    localStorage.setItem('selectedTheme', themeId);
+    
+    // Dispatch custom event for same-tab theme updates
+    window.dispatchEvent(new CustomEvent('themeChange', { detail: themeId }));
+    
+    const themeName = THEMES.find((t: { id: string; name: string }) => t.id === themeId)?.name;
+    alert(`Theme changed to ${themeName}!`);
+  };
+
+  const handleAvatarChange = async (style: string) => {
+    setSelectedAvatarStyle(style);
+    
+    if (!token) {
+      alert('Session expired. Please login again.');
+      router.safePush('/login');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          avatarStyle: style,
+          avatarSeed: user?.avatarSeed || user?.email || 'default',
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUser({
+          ...user!,
+          ...data.user,
+          avatarStyle: style,
+        });
+        // Refresh to update avatar everywhere
+        await fetchProfile();
+      }
+    } catch {
+      // Silent fail for avatar update
+    }
+  };
+
+  const handleNotificationChange = async (key: string, value: boolean) => {
+    setNotifications({
+      ...notifications,
+      [key]: value,
+    });
+    localStorage.setItem('notifications', JSON.stringify({
+      ...notifications,
+      [key]: value,
+    }));
+  };
+
+  const handlePrivacyChange = (setting: string, value: string) => {
+    const privacySettings = JSON.parse(localStorage.getItem('privacySettings') || '{}');
+    privacySettings[setting] = value;
+    localStorage.setItem('privacySettings', JSON.stringify(privacySettings));
+    alert('Privacy setting saved!');
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!token) {
+      alert('Session expired. Please login again.');
+      router.safePush('/login');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/me', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        alert('Account deleted successfully.');
+        logout();
+        router.safePush('/');
+      } else {
+        const data = await response.json();
+        alert(`Failed to delete account: ${data.error || 'Unknown error'}`);
+      }
+    } catch {
+      alert('Network error. Please try again.');
+    } finally {
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const getAvatarUrl = (style: string, seed?: string) => {
+    const avatarSeed = seed || user?.avatarSeed || user?.email || 'default';
+    return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(avatarSeed)}&backgroundColor=0a0a0a`;
   };
 
   const tabs = [
@@ -144,6 +281,26 @@ export default function ProfilePage() {
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'privacy', label: 'Privacy & Security', icon: Shield },
   ];
+
+  // Fetch profile on mount
+  useEffect(() => {
+    fetchProfile();
+    
+    // Load saved preferences from localStorage
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      setSelectedTheme(savedTheme);
+    }
+    
+    const savedNotifications = localStorage.getItem('notifications');
+    if (savedNotifications) {
+      try {
+        setNotifications(JSON.parse(savedNotifications));
+      } catch {
+        // Invalid stored data, use defaults
+      }
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -160,7 +317,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-gray-950 flex">
       <Sidebar />
       
-      <main className="flex-1 ml-72 p-8">
+      <main className={`flex-1 p-8 transition-all duration-300 ${sidebarMargin}`}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -272,6 +429,7 @@ export default function ProfilePage() {
                           onClick={() => setShowAvatarPicker(true)}
                           className="absolute -bottom-2 -right-2 p-2 rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 
                             shadow-lg shadow-cyan-500/25 hover:scale-110 transition-transform"
+                          aria-label="Change avatar"
                         >
                           <Camera className="w-5 h-5 text-white" />
                         </button>
@@ -314,20 +472,29 @@ export default function ProfilePage() {
                         {isEditing ? (
                           <div className="space-y-4">
                             <div>
-                              <label className="block text-sm text-gray-400 mb-2">Display Name</label>
+                              <label htmlFor="display-name" className="block text-sm text-gray-400 mb-2">Display Name</label>
                               <input
+                                id="display-name"
                                 type="text"
                                 value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, name: e.target.value });
+                                  setHasUnsavedChanges(true);
+                                }}
+                                placeholder="Enter your display name"
                                 className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white 
                                   focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/25 transition-all outline-none"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm text-gray-400 mb-2">Bio</label>
+                              <label htmlFor="bio" className="block text-sm text-gray-400 mb-2">Bio</label>
                               <textarea
+                                id="bio"
                                 value={formData.bio}
-                                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, bio: e.target.value });
+                                  setHasUnsavedChanges(true);
+                                }}
                                 rows={3}
                                 placeholder="Tell us about yourself..."
                                 className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white 
@@ -336,11 +503,12 @@ export default function ProfilePage() {
                             </div>
                             <button
                               onClick={handleSave}
+                              disabled={loading || !hasUnsavedChanges}
                               className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold
-                                hover:shadow-lg hover:shadow-cyan-500/25 transition-all flex items-center gap-2"
+                                hover:shadow-lg hover:shadow-cyan-500/25 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <Save className="w-5 h-5" />
-                              Save Changes
+                              {loading ? 'Saving...' : 'Save Changes'}
                             </button>
                           </div>
                         ) : (
@@ -413,7 +581,7 @@ export default function ProfilePage() {
                       {THEMES.map((theme) => (
                         <button
                           key={theme.id}
-                          onClick={() => setSelectedTheme(theme.id)}
+                          onClick={() => handleThemeChange(theme.id)}
                           className={`relative p-4 rounded-2xl border-2 transition-all duration-300
                             ${selectedTheme === theme.id 
                               ? 'border-cyan-500 bg-cyan-500/10' 
@@ -451,7 +619,7 @@ export default function ProfilePage() {
                       {AVATAR_STYLES.slice(0, 12).map((style) => (
                         <button
                           key={style}
-                          onClick={() => setSelectedAvatarStyle(style)}
+                          onClick={() => handleAvatarChange(style)}
                           className={`relative p-2 rounded-xl border-2 transition-all duration-300
                             ${selectedAvatarStyle === style 
                               ? 'border-purple-500 bg-purple-500/10 scale-105' 
@@ -509,10 +677,12 @@ export default function ProfilePage() {
                           <div className="text-sm text-gray-400">{item.description}</div>
                         </div>
                         <button
-                          onClick={() => setNotifications({
-                            ...notifications,
-                            [item.key]: !notifications[item.key as keyof typeof notifications]
-                          })}
+                          onClick={() => handleNotificationChange(
+                            item.key,
+                            !notifications[item.key as keyof typeof notifications]
+                          )}
+                          aria-label={`Toggle ${item.label}`}
+                          aria-pressed={notifications[item.key as keyof typeof notifications]}
                           className={`w-14 h-8 rounded-full transition-all duration-300 relative
                             ${notifications[item.key as keyof typeof notifications]
                               ? 'bg-gradient-to-r from-cyan-500 to-purple-500'
@@ -560,6 +730,8 @@ export default function ProfilePage() {
                           </div>
                           <select
                             defaultValue={setting.value}
+                            onChange={(e) => handlePrivacyChange(setting.label, e.target.value)}
+                            aria-label={setting.label}
                             className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white outline-none
                               focus:border-cyan-500 cursor-pointer"
                           >
@@ -618,6 +790,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => setShowAvatarPicker(false)}
                   className="p-2 rounded-xl hover:bg-white/10 transition-colors"
+                  aria-label="Close avatar picker"
                 >
                   <X className="w-6 h-6 text-gray-400" />
                 </button>
@@ -628,7 +801,7 @@ export default function ProfilePage() {
                   <button
                     key={style}
                     onClick={() => {
-                      setSelectedAvatarStyle(style);
+                      handleAvatarChange(style);
                       setShowAvatarPicker(false);
                     }}
                     className={`relative p-2 rounded-xl border-2 transition-all duration-300 hover:scale-105
@@ -689,6 +862,7 @@ export default function ProfilePage() {
                     Cancel
                   </button>
                   <button
+                    onClick={handleDeleteAccount}
                     className="flex-1 px-6 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-all"
                   >
                     Delete Forever
@@ -700,5 +874,13 @@ export default function ProfilePage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function ProfilePageWrapper() {
+  return (
+    <AuthGuard>
+      <ProfilePage />
+    </AuthGuard>
   );
 }

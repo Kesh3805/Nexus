@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { NotificationToast } from '@/components/ui/NotificationToast';
 import { Button, Card, ProgressBar, Badge, Avatar } from '@/components/ui/Elements';
 import { getAvatarUrl, getXpForLevel, cn, difficultyColors } from '@/lib/utils';
@@ -43,35 +43,30 @@ interface Category {
   _count: { quizzes: number };
 }
 
+// Skeleton loader for categories
+function CategorySkeleton() {
+  return (
+    <div className="glass-dark rounded-xl p-6 animate-pulse">
+      <div className="flex items-center gap-4 mb-4">
+        <div className="w-12 h-12 bg-gray-700 rounded-xl" />
+        <div className="flex-1">
+          <div className="h-5 bg-gray-700 rounded w-32 mb-2" />
+          <div className="h-3 bg-gray-800 rounded w-48" />
+        </div>
+      </div>
+      <div className="h-8 bg-gray-700 rounded w-24 mt-4" />
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-  const router = useRouter();
-  const { user, token, setUser } = useAuthStore();
+  const { user, token } = useAuthStore();
+  const sidebarMargin = useSidebarMargin();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
-    // Verify token and get user
-    const fetchUser = async () => {
-      try {
-        const res = await fetch('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user);
-        } else {
-          router.push('/login');
-        }
-      } catch {
-        router.push('/login');
-      }
-    };
-
+    // AuthProvider handles auth, just fetch data
     const fetchCategories = async () => {
       try {
         const res = await fetch('/api/categories');
@@ -79,30 +74,19 @@ export default function DashboardPage() {
           const data = await res.json();
           setCategories(data);
         }
-      } catch (error) {
-        console.error('Failed to fetch categories');
+      } catch {
+        // Categories will remain empty
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUser();
     fetchCategories();
-  }, [token, router, setUser]);
+  }, []);
 
-  if (!user || isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="relative">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-            className="w-20 h-20 rounded-full border-4 border-gray-800 border-t-cyan-500"
-          />
-          <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-cyan-400" />
-        </div>
-      </div>
-    );
+  // Show skeleton while user data loads (handled by AuthProvider)
+  if (!user) {
+    return null;
   }
 
   const xpForNextLevel = getXpForLevel(user.level);
@@ -120,7 +104,7 @@ export default function DashboardPage() {
       <Sidebar />
       <NotificationToast />
       
-      <main className="lg:ml-64 min-h-screen relative z-10">
+      <main className={`min-h-screen relative z-10 transition-all duration-300 ${sidebarMargin}`}>
         <div className="p-4 lg:p-8 max-w-6xl mx-auto">
           {/* Welcome Header */}
           <motion.div
@@ -323,7 +307,7 @@ export default function DashboardPage() {
                       correctAnswers: user.totalCorrect || 0,
                       totalAnswers: user.totalAnswered || 0,
                       averageScore: user.totalAnswered > 0 ? Math.round((user.totalCorrect / user.totalAnswered) * 100) : 0,
-                      bestStreak: user.bestStreak || user.streak || 0,
+                      bestStreak: user.longestStreak || user.streak || 0,
                       totalXP: user.totalXp || 0,
                     }}
                   />

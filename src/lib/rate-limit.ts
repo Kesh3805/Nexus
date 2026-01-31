@@ -4,6 +4,8 @@ interface RateLimitEntry {
 }
 
 const store = new Map<string, RateLimitEntry>();
+let lastCleanup = Date.now();
+const CLEANUP_INTERVAL_MS = 60000; // 1 minute
 
 export interface RateLimitConfig {
   limit: number;
@@ -31,8 +33,11 @@ export function checkRateLimit(
   const now = Date.now();
   const windowMs = config.windowSeconds * 1000;
 
-  // Periodic cleanup
-  if (Math.random() < 0.01) cleanupExpiredEntries();
+  // Time-based cleanup (more predictable than random)
+  if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
+    cleanupExpiredEntries();
+    lastCleanup = now;
+  }
 
   const entry = store.get(identifier);
 

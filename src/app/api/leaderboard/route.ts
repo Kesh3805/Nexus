@@ -3,10 +3,16 @@ import prisma from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { handleApiError } from '@/lib/api-errors';
 
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 100;
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'weekly';
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10)));
+    const offset = (page - 1) * limit;
 
     // Get date range based on period
     const now = new Date();
@@ -45,7 +51,8 @@ export async function GET(request: Request) {
           xpEarned: 'desc',
         },
       },
-      take: 50,
+      skip: offset,
+      take: limit,
     });
 
     // Get user details
@@ -68,7 +75,7 @@ export async function GET(request: Request) {
     const rankings = leaderboard.map((entry, index) => {
       const user = userMap.get(entry.userId);
       return {
-        rank: index + 1,
+        rank: offset + index + 1,
         userId: entry.userId,
         username: user?.username || 'Unknown',
         displayName: user?.displayName,
@@ -143,6 +150,11 @@ export async function GET(request: Request) {
       rankings,
       currentUserRank,
       period,
+      pagination: {
+        page,
+        limit,
+        hasMore: leaderboard.length === limit,
+      },
     });
     
     // Cache for 1 minute (leaderboard updates frequently but can be slightly stale)

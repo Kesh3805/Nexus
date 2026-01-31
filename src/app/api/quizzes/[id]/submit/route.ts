@@ -3,6 +3,12 @@ import prisma from '@/lib/prisma';
 import { getLevelFromXp, getStreakBonus } from '@/lib/utils';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { handleApiError, apiErrors } from '@/lib/api-errors';
+import { z } from 'zod';
+
+const submitSchema = z.object({
+  answers: z.record(z.string(), z.array(z.string())),
+  timeSpent: z.number().min(0).max(3600).optional().default(0),
+});
 
 export async function POST(
   request: Request,
@@ -14,12 +20,16 @@ export async function POST(
       throw apiErrors.unauthorized();
     }
 
-    const body = await request.json();
-    const { answers, timeSpent } = body;
-
-    if (!answers || typeof answers !== 'object') {
-      throw apiErrors.invalidInput('Answers are required');
+    const body = await request.json().catch(() => ({}));
+    
+    // Validate input with Zod
+    const result = submitSchema.safeParse(body);
+    if (!result.success) {
+      const firstError = result.error.issues?.[0]?.message || 'Invalid input';
+      throw apiErrors.invalidInput(firstError);
     }
+    
+    const { answers, timeSpent } = result.data;
 
     // Get quiz with questions
     const quiz = await prisma.quiz.findUnique({

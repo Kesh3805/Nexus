@@ -1,5 +1,3 @@
-'use server';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/auth';
@@ -24,19 +22,25 @@ export async function GET(request: NextRequest) {
     const today = new Date();
     const seed = getDailySeed(today);
 
-    // Get all quizzes and select one based on daily seed
-    const quizzes = await prisma.quiz.findMany({
+    // Get quiz count and select one based on daily seed (optimized)
+    const quizCount = await prisma.quiz.count();
+
+    if (quizCount === 0) {
+      throw apiErrors.notFound('Daily challenge quizzes');
+    }
+
+    const skipIndex = seed % quizCount;
+    const dailyQuiz = await prisma.quiz.findFirst({
+      skip: skipIndex,
       include: {
         category: true,
         questions: true,
       },
     });
 
-    if (quizzes.length === 0) {
-      throw apiErrors.notFound('Daily challenge quizzes');
+    if (!dailyQuiz) {
+      throw apiErrors.notFound('Daily challenge quiz');
     }
-
-    const dailyQuiz = quizzes[seed % quizzes.length];
 
     // Check if user has completed today's challenge
     let hasCompleted = false;

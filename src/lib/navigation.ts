@@ -93,6 +93,13 @@ export function useUnsavedChangesWarning(hasUnsavedChanges: boolean) {
   }, [hasUnsavedChanges]);
 }
 
+// Extend Window interface for gtag
+declare global {
+  interface Window {
+    gtag?: (command: string, action: string, params: Record<string, unknown>) => void;
+  }
+}
+
 /**
  * Hook to track page views
  */
@@ -101,8 +108,8 @@ export function usePageTracking() {
 
   useEffect(() => {
     // Analytics integration point
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', 'page_view', { page_path: pathname });
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'page_view', { page_path: pathname });
     }
   }, [pathname]);
 }

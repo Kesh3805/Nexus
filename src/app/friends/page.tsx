@@ -9,7 +9,7 @@ import { Card, Badge, Button, Input, Avatar } from '@/components/ui/Elements';
 import { getAvatarUrl, cn } from '@/lib/utils';
 import { 
   Users, UserPlus, Search, Check, X, Flame, 
-  MessageCircle, Trophy, Clock
+  Trophy, Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -63,6 +63,7 @@ export default function FriendsPage() {
     }
 
     fetchFriends();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, router]);
 
   const fetchFriends = async () => {
@@ -106,8 +107,8 @@ export default function FriendsPage() {
       toast.success('Friend request sent!');
       setSearchUsername('');
       fetchFriends();
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send request');
     } finally {
       setIsSending(false);
     }
@@ -128,7 +129,7 @@ export default function FriendsPage() {
         toast.success(action === 'accept' ? 'Friend added!' : 'Request declined');
         fetchFriends();
       }
-    } catch (error) {
+    } catch {
       toast.error('Action failed');
     }
   };

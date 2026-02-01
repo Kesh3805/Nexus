@@ -1,7 +1,7 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { Flame, Shield, Snowflake, Zap, Target, TrendingUp, Clock, Trophy } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Flame, Zap, Target, TrendingUp, Clock, Trophy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 // Streak flame animation component
@@ -311,7 +311,7 @@ export const CountdownWidget = ({
 }: {
   title: string;
   targetTime: Date;
-  icon?: any;
+  icon?: React.ElementType;
 }) => {
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
 

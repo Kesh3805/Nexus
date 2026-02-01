@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  User, Settings, Shield, Bell, Palette, Trophy,
-  Camera, Edit3, Save, X, Zap, Target, Clock,
-  Star, Award, TrendingUp, Calendar, ChevronRight,
-  LogOut, Trash2, Eye, EyeOff, Check, Sparkles
+  User, Shield, Bell, Palette, Trophy,
+  Camera, Edit3, Save, X, Zap, Target,
+  Award, TrendingUp, Calendar, ChevronRight,
+  LogOut, Trash2, Eye, Check, Sparkles
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
@@ -300,6 +300,7 @@ function ProfilePage() {
         // Invalid stored data, use defaults
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {

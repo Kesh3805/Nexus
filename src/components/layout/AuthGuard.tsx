@@ -11,7 +11,7 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, requireAuth = true }: AuthGuardProps) {
   const router = useRouter();
-  const { user, token, isHydrated } = useAuthStore();
+  const { token, isHydrated } = useAuthStore();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {

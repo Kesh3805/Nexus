@@ -61,17 +61,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('storage', handleStorageChange);
     
     // Also listen for custom event for same-tab updates
-    const handleThemeChange = (e: CustomEvent) => {
-      const theme = THEMES[e.detail as keyof typeof THEMES] || THEMES.cyber;
+    const handleThemeChange = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      const theme = THEMES[customEvent.detail as keyof typeof THEMES] || THEMES.cyber;
       document.documentElement.style.setProperty('--color-primary', theme.primary);
       document.documentElement.style.setProperty('--color-secondary', theme.secondary);
     };
     
-    window.addEventListener('themeChange' as any, handleThemeChange);
+    window.addEventListener('themeChange', handleThemeChange);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('themeChange' as any, handleThemeChange);
+      window.removeEventListener('themeChange', handleThemeChange);
     };
   }, []);
 

@@ -9,19 +9,9 @@ import { LevelUpModal, AchievementModal } from '@/components/ui/Modals';
 import { cn, getRandomEncouragement, formatTime } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 import { 
-  Clock, ArrowRight, ArrowLeft, CheckCircle, XCircle,
-  Zap, Trophy, Flame, Star, Home, Sparkles, Target
+  Clock, ArrowRight, CheckCircle, XCircle,
+  Zap, Trophy, Flame, Star, Home
 } from 'lucide-react';
-import {
-  SpotlightCard,
-  AnimatedBorder,
-  AnimatedGradientText,
-  NumberTicker,
-  ParticleField,
-  GlowingOrb,
-  ShimmerButton,
-  RippleButton,
-} from '@/components/ui/MagicUI';
 
 interface Question {
   id: string;
@@ -47,7 +37,7 @@ interface Quiz {
 
 export default function QuizPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { token, user, updateUser } = useAuthStore();
+  const { token, updateUser } = useAuthStore();
   const { 
     currentQuestionIndex, answers, timeRemaining,
     setQuiz, nextQuestion, setAnswer, startTimer, tick, reset
@@ -60,14 +50,42 @@ export default function QuizPage({ params }: { params: { id: string } }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnswerLocked, setIsAnswerLocked] = useState(false); // Prevent double-submit
   const [gameState, setGameState] = useState<'playing' | 'reviewing' | 'completed'>('playing');
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<{
+    attempt: {
+      correctCount: number;
+      incorrectCount: number;
+      percentage: number;
+      isPerfect: boolean;
+    };
+    answers: Array<{ questionId: string; isCorrect: boolean; correctOptions: string[] }>;
+    xp: {
+      base: number;
+      streak: number;
+      speed: number;
+      perfect: number;
+      total: number;
+    };
+    coins: number;
+    leveledUp: boolean;
+    newLevel: number;
+    streak: number;
+    streakIncremented: boolean;
+    achievements: Array<{ id: string; name: string; description: string; rarity: string }>;
+    user: { level: number; xp: number; totalXp: number; coins: number; gems: number };
+  } | null>(null);
   const [startTime] = useState(Date.now());
   const [submitError, setSubmitError] = useState<string | null>(null); // Error state
   
   // Modal states
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showAchievement, setShowAchievement] = useState(false);
-  const [unlockedAchievement, setUnlockedAchievement] = useState<any>(null);
+  const [unlockedAchievement, setUnlockedAchievement] = useState<{
+    name: string;
+    description: string;
+    icon: string;
+    rarity: string;
+    xpReward: number;
+  } | null>(null);
   const [encouragement, setEncouragement] = useState('');
 
   useEffect(() => {
@@ -112,6 +130,7 @@ export default function QuizPage({ params }: { params: { id: string } }) {
       setIsAnswerLocked(false);
       setEncouragement('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestion?.id, quiz?.id]);
 
   // Timer
@@ -130,6 +149,7 @@ export default function QuizPage({ params }: { params: { id: string } }) {
     if (timeRemaining === 0 && gameState === 'playing' && !showResult && !isAnswerLocked && !isSubmitting) {
       handleOptionSelect(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRemaining, gameState, showResult, isAnswerLocked, isSubmitting]);
 
   const handleOptionSelect = useCallback((optionId: string | null) => {
@@ -239,6 +259,7 @@ export default function QuizPage({ params }: { params: { id: string } }) {
       setSubmitError(null);
       startTimer(quiz?.timeLimit || 30);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLastQuestion, nextQuestion, startTimer, quiz]);
 
   if (isLoading || !quiz || !currentQuestion) {

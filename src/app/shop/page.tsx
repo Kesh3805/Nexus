@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Gem, Coins, ShoppingBag, Sparkles, Zap, Shield, Clock, Target,
-  Star, Crown, Palette, Award, Lock, Check, ChevronRight, Gift,
-  Flame, Heart, TrendingUp, Package, ArrowRight, X, AlertCircle
+  Gem, Coins, ShoppingBag, Zap, Shield, Clock, Target,
+  Star, Palette, Award, Lock, Check,
+  Flame, Package
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { useAuthStore } from '@/lib/store';
 import {
-  AnimatedBorder, SpotlightCard, ShimmerButton, GlowingOrb, MeteorShower
+  AnimatedBorder, MeteorShower
 } from '@/components/ui/MagicUI';
 
 interface ShopItem {
@@ -27,7 +27,7 @@ interface ShopItem {
   stock?: number;
 }
 
-const ITEM_ICONS: Record<string, any> = {
+const ITEM_ICONS: Record<string, React.ElementType> = {
   AVATAR_STYLE: Palette,
   XP_BOOST: Zap,
   STREAK_FREEZE: Shield,
@@ -42,18 +42,6 @@ const RARITY_COLORS: Record<string, { bg: string; border: string; text: string }
   epic: { bg: 'from-purple-600/20 to-pink-600/20', border: 'border-purple-500/50', text: 'text-purple-400' },
   legendary: { bg: 'from-yellow-600/20 to-orange-600/20', border: 'border-yellow-500/50', text: 'text-yellow-400' },
 };
-
-// Animated coin component
-const AnimatedCoin = ({ delay = 0 }: { delay?: number }) => (
-  <motion.div
-    initial={{ y: 0, opacity: 1 }}
-    animate={{ y: -100, opacity: 0 }}
-    transition={{ duration: 1, delay }}
-    className="absolute"
-  >
-    <Coins className="w-6 h-6 text-yellow-400" />
-  </motion.div>
-);
 
 // Item Card Component
 const ShopItemCard = ({
@@ -377,7 +365,6 @@ const PurchaseModal = ({
 
 // Success animation modal
 const SuccessModal = ({ item, onClose }: { item: ShopItem; onClose: () => void }) => {
-  const Icon = ITEM_ICONS[item.type] || Package;
 
   return (
     <motion.div
@@ -458,7 +445,7 @@ const SuccessModal = ({ item, onClose }: { item: ShopItem; onClose: () => void }
 };
 
 export default function ShopPage() {
-  const router = useRouter();
+  useRouter(); // Keep for navigation readiness
   const { user, token, setUser } = useAuthStore();
   const sidebarMargin = useSidebarMargin();
   const [items, setItems] = useState<ShopItem[]>([]);
@@ -499,6 +486,7 @@ export default function ShopPage() {
       setItems(mockItems);
       setLoading(false);
     }, 500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredItems = selectedCategory === 'all' 

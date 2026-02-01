@@ -61,7 +61,7 @@ export async function POST(
       where: {
         userId,
         quizId: params.id,
-        attemptedAt: {
+        completedAt: {
           gte: todayStart,
           lt: todayEnd,
         },
@@ -83,7 +83,7 @@ export async function POST(
 
     const answerResults = quiz.questions.map((question) => {
       const options = JSON.parse(question.options as string);
-      const correctOptions = options.filter((o: any) => o.isCorrect).map((o: any) => o.id);
+      const correctOptions = options.filter((o: { isCorrect: boolean }) => o.isCorrect).map((o: { id: string }) => o.id);
       const userAnswer = answers[question.id] || [];
       
       maxScore += question.points;
@@ -112,7 +112,7 @@ export async function POST(
     const isPerfect = correctCount === quiz.questions.length;
 
     // Calculate XP and bonuses
-    let baseXp = Math.floor(quiz.xpReward * (percentage / 100));
+    const baseXp = Math.floor(quiz.xpReward * (percentage / 100));
     const streakBonus = getStreakBonus(user.streak, baseXp);
     const speedBonus = timeSpent < 60 ? Math.floor(baseXp * 0.2) : 0; // 20% bonus for under 60 seconds
     const perfectBonus = isPerfect ? Math.floor(baseXp * 0.5) : 0; // 50% bonus for perfect

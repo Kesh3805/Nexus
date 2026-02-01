@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       throw apiErrors.unauthorized();
     }
 
-    const { itemId, gemPrice, coinPrice } = await request.json();
+    const { itemId } = await request.json();
 
     if (!itemId) {
       throw apiErrors.missingField('itemId');

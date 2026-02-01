@@ -1,17 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { NotificationToast } from '@/components/ui/NotificationToast';
-import { Button, Card, ProgressBar, Badge, Avatar } from '@/components/ui/Elements';
-import { getAvatarUrl, getXpForLevel, cn, difficultyColors } from '@/lib/utils';
+import { getXpForLevel, cn } from '@/lib/utils';
 import { 
   Flame, Zap, Trophy, Target, ChevronRight, Lock, 
-  Sparkles, Star, Clock, Play, Crown, Rocket, Gift
+  Star, Play, Crown, Rocket, Gift
 } from 'lucide-react';
 import {
   SpotlightCard,
@@ -21,13 +19,11 @@ import {
   NumberTicker,
   ParticleField,
   GlowingOrb,
-  ShimmerButton,
 } from '@/components/ui/MagicUI';
 import {
   StreakFlame,
   QuickStats,
   XPProgressBar,
-  DailyGoalWidget,
   CountdownWidget,
 } from '@/components/ui/Widgets';
 
@@ -43,27 +39,11 @@ interface Category {
   _count: { quizzes: number };
 }
 
-// Skeleton loader for categories
-function CategorySkeleton() {
-  return (
-    <div className="glass-dark rounded-xl p-6 animate-pulse">
-      <div className="flex items-center gap-4 mb-4">
-        <div className="w-12 h-12 bg-gray-700 rounded-xl" />
-        <div className="flex-1">
-          <div className="h-5 bg-gray-700 rounded w-32 mb-2" />
-          <div className="h-3 bg-gray-800 rounded w-48" />
-        </div>
-      </div>
-      <div className="h-8 bg-gray-700 rounded w-24 mt-4" />
-    </div>
-  );
-}
-
 export default function DashboardPage() {
-  const { user, token } = useAuthStore();
+  const { user } = useAuthStore();
   const sidebarMargin = useSidebarMargin();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
 
   useEffect(() => {
     // AuthProvider handles auth, just fetch data
@@ -118,67 +98,7 @@ export default function DashboardPage() {
             <p className="text-gray-400">Ready to conquer some knowledge?</p>
           </motion.div>
 
-          {/* Stats Cards - Enhanced */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[
-              {
-                icon: Flame,
-                label: 'Day Streak',
-                value: user.streak,
-                color: 'orange',
-                gradient: 'from-orange-500 to-red-500',
-              },
-              {
-                icon: Zap,
-                label: 'Total XP',
-                value: user.totalXp,
-                color: 'yellow',
-                gradient: 'from-yellow-500 to-orange-500',
-              },
-              {
-                icon: Trophy,
-                label: 'Quizzes Done',
-                value: user.totalQuizzes,
-                color: 'cyan',
-                gradient: 'from-cyan-500 to-blue-500',
-              },
-              {
-                icon: Target,
-                label: 'Accuracy',
-                value: user.totalAnswered > 0 
-                  ? Math.round((user.totalCorrect / user.totalAnswered) * 100)
-                  : 0,
-                suffix: '%',
-                color: 'green',
-                gradient: 'from-green-500 to-emerald-500',
-              },
-            ].map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <TiltCard className="h-full">
-                  <SpotlightCard
-                    className="h-full p-6 rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/10"
-                    spotlightColor={`rgba(${stat.color === 'orange' ? '249, 115, 22' : stat.color === 'yellow' ? '234, 179, 8' : stat.color === 'cyan' ? '0, 245, 255' : '34, 197, 94'}, 0.15)`}
-                  >
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} p-0.5 mb-4`}>
-                      <div className="w-full h-full rounded-xl bg-gray-900 flex items-center justify-center">
-                        <stat.icon className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                    <div className="text-3xl font-black text-white mb-1">
-                      <NumberTicker value={typeof stat.value === 'number' ? stat.value : parseInt(stat.value)} />
-                      {stat.suffix || ''}
-                    </div>
-                    <div className="text-sm text-gray-400">{stat.label}</div>
-                  </SpotlightCard>
-                </TiltCard>
-              </motion.div>
-            ))}
-          </div>
+         
 
           {/* Level Progress - Enhanced */}
           <motion.div
@@ -287,39 +207,38 @@ export default function DashboardPage() {
             className="mb-8"
           >
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-1">
-                <SpotlightCard className="p-6 rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/10">
-                  <div className="flex items-center gap-4">
-                    <StreakFlame streak={user.streak} size="md" />
-                    <div>
-                      <h4 className="text-lg font-bold text-white">Streak</h4>
-                      <p className="text-sm text-gray-400">Keep the streak alive — every day counts!</p>
-                    </div>
+              {/* Streak Widget */}
+              <SpotlightCard className="h-full p-6 rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/10">
+                <div className="flex items-center gap-4">
+                  <StreakFlame streak={user.streak} size="md" />
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-1">Streak</h4>
+                    <p className="text-sm text-gray-400">Keep the streak alive — every day counts!</p>
                   </div>
-                </SpotlightCard>
-              </div>
+                </div>
+              </SpotlightCard>
 
-              <div className="lg:col-span-1">
-                <SpotlightCard className="p-6 rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/10">
-                  <QuickStats
-                    stats={{
-                      quizzesCompleted: user.totalQuizzes || 0,
-                      correctAnswers: user.totalCorrect || 0,
-                      totalAnswers: user.totalAnswered || 0,
-                      averageScore: user.totalAnswered > 0 ? Math.round((user.totalCorrect / user.totalAnswered) * 100) : 0,
-                      bestStreak: user.longestStreak || user.streak || 0,
-                      totalXP: user.totalXp || 0,
-                    }}
-                  />
-                </SpotlightCard>
-              </div>
+              {/* Quick Stats Widget */}
+              <SpotlightCard className="h-full p-6 rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/10">
+                <QuickStats
+                  stats={{
+                    quizzesCompleted: user.totalQuizzes || 0,
+                    correctAnswers: user.totalCorrect || 0,
+                    totalAnswers: user.totalAnswered || 0,
+                    averageScore: user.totalAnswered > 0 ? Math.round((user.totalCorrect / user.totalAnswered) * 100) : 0,
+                    bestStreak: user.longestStreak || user.streak || 0,
+                    totalXP: user.totalXp || 0,
+                  }}
+                />
+              </SpotlightCard>
 
-              <div className="lg:col-span-1 space-y-4">
-                <SpotlightCard className="p-4 rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/10">
+              {/* XP Progress & Countdown Widgets */}
+              <div className="flex flex-col gap-4">
+                <SpotlightCard className="flex-1 p-6 rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/10">
                   <XPProgressBar currentXP={user.xp} requiredXP={xpForNextLevel} level={user.level} />
                 </SpotlightCard>
 
-                <SpotlightCard className="p-4 rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/10">
+                <SpotlightCard className="flex-1 p-6 rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/10">
                   <CountdownWidget title="Daily Reset" targetTime={new Date(new Date().setHours(24,0,0,0))} />
                 </SpotlightCard>
               </div>

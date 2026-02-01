@@ -5,9 +5,9 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
-import { Card, Badge, Avatar } from '@/components/ui/Elements';
+import { Card, Avatar } from '@/components/ui/Elements';
 import { getAvatarUrl, cn, formatNumber } from '@/lib/utils';
-import { Trophy, Medal, Flame, Zap, Crown, TrendingUp } from 'lucide-react';
+import { Trophy, Medal, Flame, Zap, Crown } from 'lucide-react';
 
 const periods = [
   { id: 'daily', label: 'Today' },

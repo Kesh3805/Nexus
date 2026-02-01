@@ -22,7 +22,7 @@ export class ApiError extends Error {
     public code: ApiErrorCode,
     message: string,
     public statusCode: number = 500,
-    public details?: any
+    public details?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'ApiError';
@@ -47,7 +47,7 @@ export function handleApiError(error: unknown): NextResponse {
 
   // Prisma errors
   if (error && typeof error === 'object' && 'code' in error) {
-    const prismaError = error as any;
+    const prismaError = error as { code: string; message?: string };
     
     switch (prismaError.code) {
       case 'P2002':

@@ -34,7 +34,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       token: null,
       isHydrated: false,
@@ -68,15 +68,32 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // Quiz state for active quiz sessions
+interface QuizQuestion {
+  id: string;
+  text: string;
+  options: { id: string; text: string; isCorrect: boolean }[];
+  explanation?: string;
+  points: number;
+}
+
+interface CurrentQuiz {
+  id: string;
+  title: string;
+  questions: QuizQuestion[];
+  timeLimit: number;
+  xpReward: number;
+  coinReward: number;
+}
+
 interface QuizState {
-  currentQuiz: any | null;
+  currentQuiz: CurrentQuiz | null;
   currentQuestionIndex: number;
   answers: Record<string, string[]>;
   startTime: number | null;
   questionStartTime: number | null;
   timeRemaining: number;
   isCompleted: boolean;
-  setQuiz: (quiz: any) => void;
+  setQuiz: (quiz: CurrentQuiz) => void;
   nextQuestion: () => void;
   prevQuestion: () => void;
   setAnswer: (questionId: string, selectedOptions: string[]) => void;
@@ -86,7 +103,7 @@ interface QuizState {
   reset: () => void;
 }
 
-export const useQuizStore = create<QuizState>()((set, get) => ({
+export const useQuizStore = create<QuizState>()((set) => ({
   currentQuiz: null,
   currentQuestionIndex: 0,
   answers: {},

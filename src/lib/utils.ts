@@ -122,15 +122,33 @@ export function getRandomEncouragement(type: keyof typeof encouragements): strin
 // Sound effects (Web Audio API friendly)
 export function playSound(type: 'correct' | 'incorrect' | 'levelup' | 'achievement' | 'click') {
   // This would integrate with Web Audio API in a full implementation
-  // For now, we'll use a simple approach
-  if (typeof window !== 'undefined') {
-    const frequencies: Record<string, number[]> = {
+  if (typeof window !== 'undefined' && window.AudioContext) {
+    const frequencies: Record<typeof type, number[]> = {
       correct: [523.25, 659.25, 783.99], // C5, E5, G5
       incorrect: [311.13, 293.66], // Eb4, D4
       levelup: [523.25, 659.25, 783.99, 1046.5], // C5, E5, G5, C6
       achievement: [783.99, 987.77, 1174.66], // G5, B5, D6
       click: [440], // A4
     };
-    // Implementation would go here
+    
+    const audioContext = new AudioContext();
+    const freqs = frequencies[type];
+    
+    freqs.forEach((freq, i) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = freq;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime + i * 0.1);
+      oscillator.stop(audioContext.currentTime + 0.3 + i * 0.1);
+    });
   }
 }

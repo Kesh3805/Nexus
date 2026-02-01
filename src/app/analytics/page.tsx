@@ -5,11 +5,11 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
-import { Card, Badge, ProgressBar } from '@/components/ui/Elements';
+import { Card, ProgressBar } from '@/components/ui/Elements';
 import { cn } from '@/lib/utils';
 import { 
-  BarChart2, TrendingUp, Target, Clock, Zap, 
-  CheckCircle, XCircle, Trophy, Flame, Calendar
+  BarChart2, TrendingUp, Target, Zap, 
+  CheckCircle, Trophy, Flame
 } from 'lucide-react';
 import {
   AreaChart,
@@ -19,11 +19,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
 } from 'recharts';
 
 interface AnalyticsData {
@@ -48,13 +43,13 @@ interface AnalyticsData {
     correct: number;
     total: number;
   }[];
-  bestCategory: any;
-  worstCategory: any;
+  bestCategory: { name: string; icon: string; accuracy: number } | null;
+  worstCategory: { name: string; icon: string; accuracy: number } | null;
 }
 
 export default function AnalyticsPage() {
   const router = useRouter();
-  const { token, user } = useAuthStore();
+  const { token } = useAuthStore();
   const sidebarMargin = useSidebarMargin();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [period, setPeriod] = useState('7');
@@ -85,8 +80,6 @@ export default function AnalyticsPage() {
 
     fetchAnalytics();
   }, [token, period, router]);
-
-  const COLORS = ['#00ffff', '#ff00ff', '#00ff66', '#ff6600', '#ffff00', '#0066ff'];
 
   return (
     <div className="min-h-screen bg-dark-950">
@@ -297,7 +290,7 @@ export default function AnalyticsPage() {
                             <span className="font-medium">Best Performance</span>
                           </div>
                           <p className="text-sm text-gray-300">
-                            You're crushing it in <span className="text-green-400 font-bold">{analytics.bestCategory.name}</span>!
+                            You&apos;re crushing it in <span className="text-green-400 font-bold">{analytics.bestCategory.name}</span>!
                             Keep it up!
                           </p>
                         </div>

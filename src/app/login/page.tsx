@@ -45,8 +45,8 @@ export default function LoginPage() {
       }
       
       router.push('/dashboard');
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -138,7 +138,7 @@ export default function LoginPage() {
 
           {/* Footer */}
           <div className="mt-6 text-center text-sm text-gray-400">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/register" className="text-neon-cyan hover:underline">
               Create one
             </Link>

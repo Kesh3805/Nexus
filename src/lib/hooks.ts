@@ -11,13 +11,13 @@ interface CacheEntry<T> {
   timestamp: number;
 }
 
-const cache = new Map<string, CacheEntry<any>>();
+const cache = new Map<string, CacheEntry<unknown>>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Custom hook for authenticated API fetching with caching and error handling
  */
-export function useAuthFetch<T = any>(url: string, options: FetchOptions = {}) {
+export function useAuthFetch<T = unknown>(url: string, options: FetchOptions = {}) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -39,7 +39,7 @@ export function useAuthFetch<T = any>(url: string, options: FetchOptions = {}) {
 
       // Check cache
       if (useCache) {
-        const cached = cache.get(url);
+        const cached = cache.get(url) as CacheEntry<T> | undefined;
         if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
           if (isMounted.current) {
             setData(cached.data);
@@ -105,6 +105,7 @@ export function useAuthFetch<T = any>(url: string, options: FetchOptions = {}) {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
 
   const refetch = useCallback(() => {
@@ -147,14 +148,14 @@ export function useDebounce<T>(value: T, delay: number): T {
 /**
  * Hook for throttling function calls
  */
-export function useThrottle<T extends (...args: any[]) => any>(
+export function useThrottle<T extends (...args: unknown[]) => unknown>(
   callback: T,
   delay: number
 ): T {
   const lastRan = useRef(Date.now());
 
   return useCallback(
-    (...args: any[]) => {
+    (...args: Parameters<T>) => {
       const now = Date.now();
       if (now - lastRan.current >= delay) {
         callback(...args);

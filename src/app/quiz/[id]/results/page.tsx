@@ -3,14 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Trophy, Star, Zap, Gem, Coins, Target, Clock, CheckCircle,
-  XCircle, TrendingUp, Award, Flame, ChevronRight, RotateCcw,
-  Share2, Home, BarChart2, Crown, Sparkles, ArrowRight
+  Trophy, Star, Zap, Gem, Coins, Clock, CheckCircle,
+  XCircle, Flame, ChevronRight, RotateCcw,
+  Home, BarChart2, Crown, Sparkles
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import confetti from 'canvas-confetti';
-import Link from 'next/link';
-import { AnimatedBorder, SpotlightCard } from '@/components/ui/MagicUI';
+import { AnimatedBorder } from '@/components/ui/MagicUI';
 import { RewardModal, AchievementUnlockModal } from '@/components/ui/Rewards';
 
 interface QuizResult {
@@ -53,7 +52,7 @@ const AnimatedStat = ({
 }: { 
   value: number; 
   label: string; 
-  icon: any; 
+  icon: React.ElementType; 
   color: string;
   delay?: number;
   suffix?: string;
@@ -271,7 +270,7 @@ const QuestionReview = ({
 
 export default function QuizResultsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  useSearchParams(); // Required for client-side navigation
   const [showRewards, setShowRewards] = useState(false);
   const [currentAchievement, setCurrentAchievement] = useState(0);
   const [showAchievement, setShowAchievement] = useState(false);

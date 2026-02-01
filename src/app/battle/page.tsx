@@ -1,19 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Swords, Users, Trophy, Clock, Zap, Shield, Target, Crown,
-  Flame, Star, ChevronRight, Play, Search, X, Check, Loader2,
-  UserPlus, MessageCircle, Timer, Award, TrendingUp, Sparkles,
-  Wifi, WifiOff, Volume2, VolumeX, Eye, Send
+  Swords, Users, Trophy, Zap, Shield, Target, Crown,
+  Flame, ChevronRight, Play, Search, X, Check,
+  UserPlus, Eye
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { useAuthStore } from '@/lib/store';
 import {
-  AnimatedBorder, SpotlightCard, ShimmerButton, ParticleField,
-  MeteorShower, CyberGrid, GlowingOrb
+  AnimatedBorder,
+  MeteorShower, CyberGrid
 } from '@/components/ui/MagicUI';
 
 interface BattleRoom {
@@ -632,6 +631,7 @@ export default function BattleModePage() {
     }, 5000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleQuickMatch = () => {

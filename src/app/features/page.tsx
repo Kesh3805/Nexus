@@ -2,17 +2,17 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Card } from '@/components/ui/Elements';
+
 import { 
   Briefcase, Brain, MessageSquare, Keyboard, Terminal, 
-  Mic, BarChart3, Play, Sparkles, Zap 
+  BarChart3, Play, Sparkles, Zap 
 } from 'lucide-react';
 import { SpotlightCard, AnimatedGradientText, ParticleField } from '@/components/ui/MagicUI';
 import { useRouter } from 'next/navigation';
 
 export default function FeaturesShowcase() {
   const router = useRouter();
-  const [activeDemo, setActiveDemo] = useState<string | null>(null);
+  const [, setActiveDemo] = useState<string | null>(null);
 
   const features = [
     {
@@ -236,7 +236,7 @@ export default function FeaturesShowcase() {
             </div>
 
             <blockquote className="text-xl italic text-gray-300 border-l-4 border-purple-500 pl-6 mb-6">
-              "You are not behind on engineering. You are behind on novelty leverage."
+              &quot;You are not behind on engineering. You are behind on novelty leverage.&quot;
             </blockquote>
 
             <p className="text-gray-400 mb-6">

@@ -1,18 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  Zap, Trophy, Clock, Star, Users, ChevronRight, Gift,
-  Flame, Target, Crown, Sparkles, Timer, Award, TrendingUp,
-  Swords, Shield, Heart, Gem, Coins, Lock, Play, CheckCircle
+  Zap, Trophy, Clock, Users, Gift,
+  Flame, Target, Crown, Sparkles,
+  Shield, Gem, Coins, Play, CheckCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { useAuthStore } from '@/lib/store';
 import {
-  ParticleField, GlowingOrb, AnimatedBorder, SpotlightCard,
-  ShimmerButton, NumberTicker, MeteorShower, CyberGrid
+  AnimatedBorder, SpotlightCard,
+  MeteorShower, CyberGrid
 } from '@/components/ui/MagicUI';
 
 interface DailyChallenge {
@@ -123,7 +123,7 @@ const PowerUpCard = ({
   owned,
   onBuy 
 }: {
-  icon: any;
+  icon: React.ElementType;
   name: string;
   description: string;
   cost: number;
@@ -179,7 +179,6 @@ export default function DailyChallengePage() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [participantCount, setParticipantCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [selectedPowerUp, setSelectedPowerUp] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDailyChallenge();
@@ -263,7 +262,7 @@ export default function DailyChallengePage() {
                 <Flame className="w-10 h-10 text-orange-500" />
               </motion.div>
             </div>
-            <p className="text-gray-400">Complete today's challenge for bonus rewards!</p>
+            <p className="text-gray-400">Complete today&apos;s challenge for bonus rewards!</p>
             
             {/* Countdown */}
             <div className="mt-6 flex flex-col items-center gap-2">
@@ -461,7 +460,7 @@ export default function DailyChallengePage() {
               <SpotlightCard className="bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 border border-gray-800/50">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                   <Crown className="w-5 h-5 text-yellow-400" />
-                  Today's Champions
+                  Today&apos;s Champions
                 </h3>
 
                 {leaderboard.length > 0 ? (
@@ -516,7 +515,7 @@ export default function DailyChallengePage() {
                 ) : (
                   <div className="text-center py-8 text-gray-400">
                     <Trophy className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>No one has completed today's challenge yet.</p>
+                    <p>No one has completed today&apos;s challenge yet.</p>
                     <p className="text-sm mt-1">Be the first!</p>
                   </div>
                 )}

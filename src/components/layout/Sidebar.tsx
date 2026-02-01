@@ -11,7 +11,6 @@ import {
   Users, 
   BarChart2, 
   Award, 
-  Settings, 
   LogOut,
   Flame,
   Gem,

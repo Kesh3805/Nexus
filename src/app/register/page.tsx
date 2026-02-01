@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Brain, Mail, Lock, User, ArrowRight, Sparkles } from 'lucide-react';
+import { Brain, Mail, Lock, User, Sparkles } from 'lucide-react';
 import { Button, Input } from '@/components/ui/Elements';
 import { useAuthStore } from '@/lib/store';
 import toast from 'react-hot-toast';
@@ -78,8 +78,8 @@ export default function RegisterPage() {
       setToken(data.token);
       toast.success('Welcome to Nexus Quiz! 🎉');
       router.push('/dashboard');
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Registration failed');
     } finally {
       setIsLoading(false);
     }

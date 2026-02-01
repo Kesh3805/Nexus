@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Trophy, Star, Zap, Gem, Coins, Crown, Award, Flame,
-  Target, TrendingUp, Sparkles, Gift, X, ChevronUp
+  Trophy, Zap, Gem, Coins, Award, Flame,
+  TrendingUp, Sparkles, Gift, X, ChevronUp
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -85,7 +85,7 @@ const GlowingRing = ({ delay = 0, color }: { delay?: number; color: string }) =>
 
 // Reward icon with animation
 const RewardIcon = ({ reward }: { reward: Reward }) => {
-  const iconMap: Record<string, { icon: any; color: string; bg: string }> = {
+  const iconMap: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
     xp: { icon: Zap, color: '#facc15', bg: 'from-yellow-500/30 to-amber-500/30' },
     coins: { icon: Coins, color: '#fbbf24', bg: 'from-amber-500/30 to-orange-500/30' },
     gems: { icon: Gem, color: '#a855f7', bg: 'from-purple-500/30 to-pink-500/30' },
@@ -233,7 +233,7 @@ const LevelUpDisplay = ({ level }: { level: number }) => (
       <div className="text-3xl font-black bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
         LEVEL UP!
       </div>
-      <div className="text-gray-400 mt-2">You've reached a new level!</div>
+      <div className="text-gray-400 mt-2">You&apos;ve reached a new level!</div>
     </motion.div>
   </motion.div>
 );

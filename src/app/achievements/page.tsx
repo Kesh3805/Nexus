@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { Sidebar, useSidebarMargin } from '@/components/layout/Sidebar';
 import { Card, Badge, ProgressBar } from '@/components/ui/Elements';
-import { cn, rarityColors } from '@/lib/utils';
-import { Award, Lock, Star, Sparkles, Trophy, Flame, Zap, Target } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Award, Lock, Star, Sparkles, Trophy, Flame, Target } from 'lucide-react';
 
 interface Achievement {
   id: string;

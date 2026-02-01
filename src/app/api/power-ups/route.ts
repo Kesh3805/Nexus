@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       throw apiErrors.unauthorized();
     }
 
-    const { powerUpId, quizId } = await request.json();
+    const { powerUpId } = await request.json();
 
     const powerUp = Object.values(POWER_UPS).find(p => p.id === powerUpId);
     if (!powerUp) {

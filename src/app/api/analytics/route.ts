@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     const accuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
 
     // Category breakdown
-    const categoryStats = attempts.reduce((acc: any, attempt) => {
+    const categoryStats = attempts.reduce((acc: Record<string, { name: string; color: string; quizzes: number; correct: number; total: number }>, attempt) => {
       const cat = attempt.quiz.category.name;
       if (!acc[cat]) {
         acc[cat] = {
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
     }
 
     // Best and worst categories
-    const categoryArray = Object.values(categoryStats) as any[];
+    const categoryArray = Object.values(categoryStats);
     categoryArray.sort((a, b) => {
       const accA = a.total > 0 ? a.correct / a.total : 0;
       const accB = b.total > 0 ? b.correct / b.total : 0;

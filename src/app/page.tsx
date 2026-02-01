@@ -5,8 +5,8 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import Link from 'next/link';
 import { 
   Zap, Trophy, Users, Brain, Sparkles, ChevronRight, 
-  Star, Target, Flame, Shield, Crown, Rocket,
-  Play, ArrowRight, Check, TrendingUp, Award
+  Star, Target, Flame, Crown, Rocket,
+  Play, ArrowRight, Check
 } from 'lucide-react';
 import {
   AnimatedBorder,
@@ -18,8 +18,6 @@ import {
   TiltCard,
   AnimatedGradientText,
   MeteorShower,
-  Spotlight,
-  HexagonGrid,
   CyberGrid,
   NumberTicker,
   MorphingText,
@@ -383,7 +381,7 @@ export default function HomePage() {
             
             <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
               Join thousands of learners who have already transformed their knowledge. 
-              It's free to start, no credit card required.
+              It&apos;s free to start, no credit card required.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">

@@ -147,7 +147,7 @@ export function LevelUpModal({ isOpen, onClose, newLevel }: LevelUpModalProps) {
                 transition={{ delay: 0.6 }}
                 className="text-gray-400 text-lg"
               >
-                You've reached level {newLevel}! Keep conquering!
+                You&apos;ve reached level {newLevel}! Keep conquering!
               </motion.p>
               
               <motion.button

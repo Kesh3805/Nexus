@@ -1,20 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { Button, Card } from '@/components/ui/Elements';
-import { cn, formatTime } from '@/lib/utils';
+import { Button } from '@/components/ui/Elements';
+import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 import { 
-  Briefcase, TrendingUp, TrendingDown, DollarSign, Target,
+  Briefcase, TrendingUp, DollarSign, Target,
   AlertTriangle, Shield, Zap, BarChart3, Brain
 } from 'lucide-react';
 import {
   SpotlightCard,
-  AnimatedBorder,
-  AnimatedGradientText,
   ParticleField,
   ShimmerButton,
 } from '@/components/ui/MagicUI';
@@ -49,7 +47,7 @@ interface SimulatorQuestion {
 
 export default function SimulatorPage() {
   const router = useRouter();
-  const { token, user } = useAuthStore();
+  const { token } = useAuthStore();
   const [started, setStarted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -432,6 +430,7 @@ export default function SimulatorPage() {
   useEffect(() => {
     const shuffled = [...questionPool].sort(() => Math.random() - 0.5);
     setActiveQuestions(shuffled.slice(0, 5));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
